@@ -1,6 +1,8 @@
 import logging
 
 from django.utils.decorators import method_decorator
+from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics
 from rest_framework.decorators import action
@@ -9,7 +11,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Webhook, WebhookAction
-from .serializers import WebhookSerializer
+from .serializers import WebhookSerializer, WebhookSerializerForUpdate
+from projects import models as project_models
+
+class WebhookFilterSet(django_filters.FilterSet):
+    project = django_filters.ModelChoiceFilter(
+        field_name='project',
+        queryset=project_models.Project.objects.all(),
+        null_label='isnull'
+    )
 
 
 @method_decorator(
@@ -17,21 +27,23 @@ from .serializers import WebhookSerializer
     decorator=swagger_auto_schema(
         tags=['Webhooks'],
         operation_summary='List of webhooks',
-        operation_description="List of webhooks of user's active organization."
-    )
+        operation_description="List of webhooks of user's active organization.",
+    ),
 )
 @method_decorator(
     name='post',
     decorator=swagger_auto_schema(
         tags=['Webhooks'],
         operation_summary='Create a webhook',
-        operation_description="Create a webhook for user's active organization."
-    )
+        operation_description="Create a webhook for user's active organization.",
+    ),
 )
 class WebhookListAPI(generics.ListCreateAPIView):
     queryset = Webhook.objects.all()
     serializer_class = WebhookSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = WebhookFilterSet
 
     def get_queryset(self):
         return Webhook.objects.filter(organization=self.request.user.active_organization)
@@ -40,26 +52,31 @@ class WebhookListAPI(generics.ListCreateAPIView):
         serializer.save(organization=self.request.user.active_organization)
 
 
-@method_decorator(
-    name='get',
-    decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Get webhook info')
-)
+@method_decorator(name='get', decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Get webhook info'))
 @method_decorator(
     name='put',
-    decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Save webhook info')
+    decorator=swagger_auto_schema(
+        tags=['Webhooks'], operation_summary='Save webhook info', query_serializer=WebhookSerializerForUpdate
+    ),
 )
 @method_decorator(
     name='patch',
-    decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Update webhook info')
+    decorator=swagger_auto_schema(
+        tags=['Webhooks'], operation_summary='Update webhook info', query_serializer=WebhookSerializerForUpdate
+    ),
 )
 @method_decorator(
-    name='delete',
-    decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Delete webhook info')
+    name='delete', decorator=swagger_auto_schema(tags=['Webhooks'], operation_summary='Delete webhook info')
 )
 class WebhookAPI(generics.RetrieveUpdateDestroyAPIView):
     queryset = Webhook.objects.all()
     serializer_class = WebhookSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return WebhookSerializerForUpdate
+        return super().get_serializer_class()
 
     def get_queryset(self):
         return Webhook.objects.filter(organization=self.request.user.active_organization)
@@ -67,10 +84,12 @@ class WebhookAPI(generics.RetrieveUpdateDestroyAPIView):
 
 @method_decorator(
     name='get',
-    decorator=swagger_auto_schema(tags=['Webhooks'],
-                                  operation_summary='Returns description of all webhook actions',
-                                  operation_description='Use this information to setup webhooks.',
-                                  responses={"200": "Object with description data."},)
+    decorator=swagger_auto_schema(
+        tags=['Webhooks'],
+        operation_summary='Returns description of all webhook actions',
+        operation_description='Use this information to setup webhooks.',
+        responses={"200": "Object with description data."},
+    ),
 )
 class WebhookInfoAPI(APIView):
     permission_classes = [AllowAny]
@@ -84,6 +103,4 @@ class WebhookInfoAPI(APIView):
             }
             for key, value in WebhookAction.ACTIONS.items()
         }
-        return Response(
-            data=result
-        )
+        return Response(data=result)

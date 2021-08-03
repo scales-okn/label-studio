@@ -1,13 +1,19 @@
 import requests
 from core.validators import JSONSchemaValidator
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 import logging
 
 from projects.models import Project
 from tasks.models import Task, Annotation
-from .serializers_for_hooks import OnlyIDWebhookSerializer, ProjectWebhookSerializer, TaskWebhookSerializer, AnnotationWebhookSerializer
+from .serializers_for_hooks import (
+    OnlyIDWebhookSerializer,
+    ProjectWebhookSerializer,
+    TaskWebhookSerializer,
+    AnnotationWebhookSerializer,
+)
 
 HEADERS_SCHEMA = {
     "type": "object",
@@ -15,13 +21,21 @@ HEADERS_SCHEMA = {
         "^[a-zA-Z0-9-_]+$": {"type": "string"},
     },
     "maxProperties": 10,
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 
 class Webhook(models.Model):
+    """Model of webhooks.
+
+    If webhook has not null project field -- it's project webhook
+    """
 
     organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='webhooks')
+
+    project = models.ForeignKey(
+        'projects.Project', null=True, on_delete=models.CASCADE, related_name='webhooks', default=None
+    )
 
     url = models.URLField(_('URL of webhook'), max_length=2048)
 
@@ -29,9 +43,9 @@ class Webhook(models.Model):
 
     send_for_all_actions = models.BooleanField(_("Use webhook for all actions"), default=True)
 
-    headers = models.JSONField(_("request extra headers of webhook"),
-                               validators=[JSONSchemaValidator(HEADERS_SCHEMA)],
-                               default=dict)
+    headers = models.JSONField(
+        _("request extra headers of webhook"), validators=[JSONSchemaValidator(HEADERS_SCHEMA)], default=dict
+    )
 
     is_active = models.BooleanField(_("is webhook active"), default=True)
 
@@ -40,6 +54,11 @@ class Webhook(models.Model):
 
     def get_actions(self):
         return WebhookAction.objects.filter(webhook=self).values_list('action', flat=True)
+
+    def validate_actions(self, actions):
+        actions_meta = [WebhookAction.ACTIONS[action] for action in actions]
+        if self.project and any((meta.get('organization-only') for meta in actions_meta)):
+            raise ValidationError("Project webhook can't contain organization-only action.")
 
     def set_actions(self, actions):
         if not actions:
@@ -50,7 +69,7 @@ class Webhook(models.Model):
         for new_action in list(actions - old_actions):
             WebhookAction.objects.create(webhook=self, action=new_action)
 
-        WebhookAction.objects.filter(webhook=self, action__in=(old_actions-actions)).delete()
+        WebhookAction.objects.filter(webhook=self, action__in=(old_actions - actions)).delete()
 
     def has_permission(self, user):
         return self.organization.has_user(user)
@@ -79,6 +98,7 @@ class WebhookAction(models.Model):
             'key': 'projects',
             'model': Project,
             'serializer': ProjectWebhookSerializer,
+            'organization-only': True,
         },
         PROJECT_UPDATED: {
             'name': _('Project updated'),
@@ -86,6 +106,7 @@ class WebhookAction(models.Model):
             'key': 'projects',
             'model': Project,
             'serializer': ProjectWebhookSerializer,
+            'organization-only': True,
         },
         PROJECT_DELETED: {
             'name': _('Project deleted'),
@@ -93,6 +114,7 @@ class WebhookAction(models.Model):
             'key': 'projects',
             'model': Project,
             'serializer': OnlyIDWebhookSerializer,
+            'organization-only': True,
         },
         TASK_CREATED: {
             'name': _('Task created'),
@@ -100,6 +122,7 @@ class WebhookAction(models.Model):
             'key': 'tasks',
             'model': Task,
             'serializer': TaskWebhookSerializer,
+            'project-field': 'project',
         },
         TASK_UPDATED: {
             'name': _('Task updated'),
@@ -107,6 +130,7 @@ class WebhookAction(models.Model):
             'key': 'tasks',
             'model': Task,
             'serializer': TaskWebhookSerializer,
+            'project-field': 'project',
         },
         TASK_DELETED: {
             'name': _('Task deleted'),
@@ -114,6 +138,7 @@ class WebhookAction(models.Model):
             'key': 'tasks',
             'model': Task,
             'serializer': OnlyIDWebhookSerializer,
+            'project-field': 'project',
         },
         ANNOTATION_CREATED: {
             'name': _('Annotation created'),
@@ -121,6 +146,7 @@ class WebhookAction(models.Model):
             'key': 'annotations',
             'model': Annotation,
             'serializer': AnnotationWebhookSerializer,
+            'project-field': 'task__project',
         },
         ANNOTATION_UPDATED: {
             'name': _('Annotation updated'),
@@ -128,6 +154,7 @@ class WebhookAction(models.Model):
             'key': 'annotations',
             'model': Annotation,
             'serializer': AnnotationWebhookSerializer,
+            'project-field': 'task__project',
         },
         ANNOTATION_DELETED: {
             'name': _('Annotation deleted'),
@@ -135,6 +162,7 @@ class WebhookAction(models.Model):
             'key': 'annotations',
             'model': Annotation,
             'serializer': OnlyIDWebhookSerializer,
+            'project-field': 'task__project',
         },
     }
 
@@ -143,7 +171,8 @@ class WebhookAction(models.Model):
     action = models.CharField(
         _('action of webhook'),
         choices=[[key, value['name']] for key, value in ACTIONS.items()],
-        max_length=128, db_index=True,
+        max_length=128,
+        db_index=True,
     )
 
     class Meta:

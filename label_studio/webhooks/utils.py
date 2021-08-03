@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Q
 
 from .models import Webhook, WebhookAction
+from .serializers_for_hooks import ProjectWebhookSerializer
 
 
 def run_webhook(webhook, action, payload=None):
@@ -20,6 +21,7 @@ def run_webhook(webhook, action, payload=None):
     if webhook.send_payload and payload:
         data.update(payload)
     try:
+        logging.debug('Run webhook %s for action %s', webhook.id, action)
         return requests.post(
             webhook.url,
             headers=webhook.headers,
@@ -31,46 +33,55 @@ def run_webhook(webhook, action, payload=None):
         return
 
 
-def get_active_webhooks(organization, action):
-    """Return all active webhooks for organization by action.
+def get_active_webhooks(organization, project, action):
+    """Return all active webhooks for organization or project by action.
+
+    If project is None - function return only organization hooks
     """
+    action_meta = WebhookAction.ACTIONS[action]
+    if project and action_meta.get('organization-only'):
+        raise ValueError("There is no project webhooks for organization-only action")
+
     return Webhook.objects.filter(
-        Q(organization=organization) &
-        Q(is_active=True) &
-        (
-            Q(send_for_all_actions=True) |
-            Q(id__in=WebhookAction.objects.filter(
-                webhook__organization=organization,
-                action=action
-            ).values_list('webhook_id', flat=True))
+        Q(organization=organization)
+        & Q(project=project)
+        & Q(is_active=True)
+        & (
+            Q(send_for_all_actions=True)
+            | Q(
+                id__in=WebhookAction.objects.filter(webhook__organization=organization, action=action).values_list(
+                    'webhook_id', flat=True
+                )
+            )
         )
     )
 
 
-def emit_webhooks(organization, action, payload):
-    """Run all active webhooks for the action.
-    """
-    webhooks = get_active_webhooks(organization, action)
+def emit_webhooks(organization, project, action, payload):
+    """Run all active webhooks for the action."""
+    # TODO add project to payload like in emit_webhooks_for_instances
+    webhooks = get_active_webhooks(organization, project, action)
     for wh in webhooks:
         run_webhook(wh, action, payload)
 
 
-def emit_webhooks_for_instanses(organization, action, instanses=None):
-    """Run all active webhooks for the action using instanses as payload.
+def emit_webhooks_for_instances(organization, project, action, instances=None):
+    """Run all active webhooks for the action using instances as payload.
 
     Be sure WebhookAction.ACTIONS contains all required fields.
     """
-    webhooks = get_active_webhooks(organization, action)
+    webhooks = get_active_webhooks(organization, project, action)
     if not webhooks.exists():
         return
-    payload = None
-    # if instanses and there is a webhook that sends payload
+    payload = {}
+    # if instances and there is a webhook that sends payload
     # get serialized payload
-    if instanses and webhooks.filter(send_payload=True).exists():
+    if instances and webhooks.filter(send_payload=True).exists():
         serializer_class = WebhookAction.ACTIONS[action].get('serializer')
         if serializer_class:
-            data = serializer_class(instance=instanses, many=True).data
-            payload = {WebhookAction.ACTIONS[action]['key']: data}
+            payload[WebhookAction.ACTIONS[action]['key']] = serializer_class(instance=instances, many=True).data
+        if project and payload:
+            payload['project'] = ProjectWebhookSerializer(instance=project).data
     for wh in webhooks:
         run_webhook(wh, action, payload)
 
@@ -88,24 +99,34 @@ def api_webhook(action):
             return super(ProjectAPI, self).put(request, *args, **kwargs)
         ```
     """
+
     def decorator(func):
         @wraps(func)
         def wrap(self, request, *args, **kwargs):
             responce = func(self, request, *args, **kwargs)
-            emit_webhooks_for_instanses(
+
+            action_meta = WebhookAction.ACTIONS[action]
+            instance = WebhookAction.ACTIONS[action]['model'].objects.get(id=responce.data.get('id'))
+            project = None
+            if 'project-field' in action_meta:
+                project = get_nested_field(instance, action_meta['project-field'])
+            emit_webhooks_for_instances(
                 request.user.active_organization,
+                project,
                 action,
-                [WebhookAction.ACTIONS[action]['model'].objects.get(id=responce.data.get('id'))]
+                [instance],
             )
             return responce
+
         return wrap
+
     return decorator
 
 
 def api_webhook_for_delete(action):
     """Decorator emit webhooks for APIView delete method.
 
-    The decorator expects authorized request and use get_object() method 
+    The decorator expects authorized request and use get_object() method
     before delete.
 
     Example:
@@ -116,16 +137,30 @@ def api_webhook_for_delete(action):
             return super(AnnotationAPI, self).delete(request, *args, **kwargs)
         ```
     """
+
     def decorator(func):
         @wraps(func)
         def wrap(self, request, *args, **kwargs):
-            obj = {'id': self.get_object().pk}
+            instance = self.get_object()
+            action_meta = WebhookAction.ACTIONS[action]
+            project = None
+            if 'project-field' in action_meta:
+                project = get_nested_field(instance, action_meta['project-field'])
+
+            obj = {'id': instance.pk}
+
             responce = func(self, request, *args, **kwargs)
-            emit_webhooks_for_instanses(
-                request.user.active_organization,
-                action,
-                [obj]
-            )
+
+            emit_webhooks_for_instances(request.user.active_organization, project, action, [obj])
             return responce
+
         return wrap
+
     return decorator
+
+
+def get_nested_field(value, field):
+    fields = field.split('__')
+    for fld in fields:
+        value = getattr(value, fld)
+    return value

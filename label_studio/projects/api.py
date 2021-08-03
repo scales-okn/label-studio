@@ -31,7 +31,7 @@ from projects.serializers import (
 )
 from tasks.models import Task, Annotation, Prediction, TaskLock
 from tasks.serializers import TaskSerializer, TaskWithAnnotationsAndPredictionsAndDraftsSerializer
-from webhooks.utils import api_webhook, api_webhook_for_delete, emit_webhooks_for_instanses
+from webhooks.utils import api_webhook, api_webhook_for_delete, emit_webhooks_for_instances
 from webhooks.models import WebhookAction
 
 from core.mixins import APIViewVirtualRedirectMixin, APIViewVirtualMethodMixin
@@ -598,7 +598,7 @@ class TasksListAPI(generics.ListCreateAPIView,
         project = generics.get_object_or_404(Project.objects.for_user(self.request.user), pk=self.kwargs['pk'])
         task_ids = list(Task.objects.filter(project=project).values('id'))
         Task.objects.filter(project=project).delete()
-        emit_webhooks_for_instanses(request.user.active_organization, WebhookAction.TASK_DELETED, task_ids)
+        emit_webhooks_for_instances(request.user.active_organization, WebhookAction.TASK_DELETED, task_ids)
         return Response(data={'tasks': task_ids}, status=204)
 
 

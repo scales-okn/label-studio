@@ -7,7 +7,7 @@ from core.utils.common import temporary_disconnect_signal, temporary_disconnect_
 
 from data_manager.functions import evaluate_predictions
 
-from webhooks.utils import emit_webhooks_for_instanses
+from webhooks.utils import emit_webhooks_for_instances
 from webhooks.models import WebhookAction
 
 
@@ -48,7 +48,7 @@ def delete_tasks(project, queryset, **kwargs):
         with temporary_disconnect_signal(signals.post_delete, update_is_labeled_after_removing_annotation, Annotation):
             queryset.delete()
 
-    emit_webhooks_for_instanses(project.organization, WebhookAction.TASK_DELETED, tasks_ids)
+    emit_webhooks_for_instances(project.organization, WebhookAction.TASK_DELETED, tasks_ids)
 
     # remove all tabs if there are no tasks in project
     reload = False
@@ -71,7 +71,7 @@ def delete_tasks_annotations(project, queryset, **kwargs):
     count = annotations.count()
     annotations_ids = list(annotations.values('id'))
     annotations.delete()
-    emit_webhooks_for_instanses(project.organization, WebhookAction.ANNOTATION_DELETED, annotations_ids)
+    emit_webhooks_for_instances(project.organization, WebhookAction.ANNOTATION_DELETED, annotations_ids)
     return {'processed_items': count,
             'detail': 'Deleted ' + str(count) + ' annotations'}
 

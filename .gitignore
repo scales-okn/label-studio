@@ -51,3 +51,4 @@ label_studio.sqlite3
 tmp
 .DS_Store
 *.sqlite3
+label_studio/core/settings/local.py
