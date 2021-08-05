@@ -2,7 +2,7 @@
 import React from 'react';
 import { SidebarMenu } from '../../components/SidebarMenu/SidebarMenu';
 import { PeoplePage } from './PeoplePage/PeoplePage';
-import { WebhookPage } from './WebhookPage/WebhookPage';
+import { WebhookPage } from '../WebhookPage/WebhookPage';
 
 const MenuLayout = ({ children, ...routeProps }) => {
   return (
