@@ -2967,6 +2967,12 @@ body {
 .ls-webhook-form__form-toggle {
   justify-content: flex-end;
 }
+.ls-webhook-detail__width-button {
+  width: 170px;
+}
+.ls-webhook-detail__modal-text {
+  margin-bottom: 32px;
+}
 .ls-webhook-detail__black-text {
   color: #000;
 }

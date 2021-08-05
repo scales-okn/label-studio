@@ -9,6 +9,8 @@ import { useAPI } from '../../providers/ApiProvider';
 import "./WebhookPage.styl";
 import { Space } from '../../components/Space/Space';
 import { useProject } from '../../providers/ProjectProvider';
+import { modal } from '../../components/Modal/Modal';
+import { useModalControls } from "../../components/Modal/ModalPopup";
 
 
 const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
@@ -136,7 +138,7 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
               </div>
             </div>
           </Form.Row>
-          <Block name='webhook-payload' style={{marginBottom: '40px'}} columnCount={1}>
+          <Block name='webhook-payload' style={{marginBottom: '40px'}}>
             <Elem name='title'>
               <Label text="Payload" large />
             </Elem>
@@ -175,10 +177,39 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
               look="danger"
               type='button'
               className={rootClass.elem('delete-button')}
-              onClick={async ()=>{
-                await api.callApi('deleteWebhook', {params:{pk:webhook.id}});
-                onBack();
-                await fetchWebhooks();
+              onClick={ ()=> {
+                modal({
+                  title: "Delete",
+                  body: ()=>{
+                    const ctrl = useModalControls();
+                    return (<div>
+                      <p className={rootClass.elem('modal-text')}>
+                      Are you sure you want to delete the webhook? This action
+                      cannot be undone.  
+                      </p>
+                      <Space align="end">
+                        <Button 
+                          className={rootClass.elem('width-button')} 
+                          onClick={()=>{ctrl.hide();}}>
+                            Cancel
+                        </Button>
+                        <Button 
+                          look="danger"
+                          className={rootClass.elem('width-button')}
+                          onClick={
+                            async ()=>{
+                              await api.callApi('deleteWebhook', {params:{pk:webhook.id}});
+                              onBack();
+                              await fetchWebhooks();
+                              ctrl.hide();
+                            }
+                          }
+                        >Delete</Button>
+                      </Space>
+                    </div>);},
+                  style: { width: 512 },
+                });
+                
               }}>
                 Delete Webhook...
             </Button>
@@ -203,3 +234,5 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
 };
 
 export default WebhookDetail;
+
+
