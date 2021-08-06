@@ -1,9 +1,11 @@
 import logging
 
+
 from django.utils.decorators import method_decorator
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -14,11 +16,10 @@ from .models import Webhook, WebhookAction
 from .serializers import WebhookSerializer, WebhookSerializerForUpdate
 from projects import models as project_models
 
+
 class WebhookFilterSet(django_filters.FilterSet):
     project = django_filters.ModelChoiceFilter(
-        field_name='project',
-        queryset=project_models.Project.objects.all(),
-        null_label='isnull'
+        field_name='project', queryset=project_models.Project.objects.all(), null_label='isnull'
     )
 
 
@@ -89,18 +90,36 @@ class WebhookAPI(generics.RetrieveUpdateDestroyAPIView):
         operation_summary='Returns description of all webhook actions',
         operation_description='Use this information to setup webhooks.',
         responses={"200": "Object with description data."},
+        manual_parameters=[
+            openapi.Parameter(
+                'organization-only',
+                openapi.IN_QUERY,
+                description="organization-only or not",
+                type=openapi.TYPE_BOOLEAN,
+            )
+        ],
     ),
 )
 class WebhookInfoAPI(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+
         result = {
             key: {
                 'name': value['name'],
                 'description': value['description'],
                 'key': value['key'],
+                'organization-only': value.get('organization-only', False),
             }
             for key, value in WebhookAction.ACTIONS.items()
         }
+        organization_only = request.query_params.get('organization-only')
+        if organization_only is not None:
+            organization_only = organization_only == 'true'
+            result = {
+                key: value
+                for key, value in result.items()
+                if value.get('organization-only', False) == organization_only
+            }
         return Response(data=result)

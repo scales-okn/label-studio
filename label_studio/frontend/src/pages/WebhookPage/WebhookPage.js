@@ -44,7 +44,16 @@ const Webhook = () => {
   }, [api, projectId]);
 
   const fetchWebhooksInfo = useCallback(async () => {
-    const info = await api.callApi('webhooksInfo');
+    const info = await api.callApi('webhooksInfo',
+      {
+        params: projectId ? 
+          {
+            'organization-only': false,
+          } 
+          :
+          null,
+      },
+    );
     if (info) setWebhooksInfo(info);
   }, [api, projectId]);
 
