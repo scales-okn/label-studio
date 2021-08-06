@@ -21,15 +21,24 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack, onSelectA
   const rootClass = cn('webhook-detail');
 
   const api = useAPI(); 
-  const {project} = useProject();
   const [headers, setHeaders] = useState(Object.entries(webhook?.headers || []));
   const [sendForAllActions, setSendForAllActions] = useState(webhook ? webhook.send_for_all_actions : true);
   const [actions, setActions] = useState(new Set(webhook?.actions));
   const [isActive, setIsActive] = useState(webhook ? webhook.is_active : true);
   const [sendPayload, setSendPayload] = useState(webhook ? webhook.send_payload : true);
 
-  console.log(actions);
+  const { project } = useProject();
+  
+  const [projectId, setProjectId] = useState(project.id);
 
+  useEffect(()=>{
+    if (Object.keys(project).length === 0) {
+      setProjectId(null);
+    }else{
+      setProjectId(project.id);
+    }
+
+  }, [project]);
 
   const onAddHeaderClick = () => {
     if (!(headers.find(([k]) => k === ''))) {
@@ -78,7 +87,7 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack, onSelectA
     setSendPayload(webhook.send_payload);
   }, [webhook]);
 
-  // if (webhook === null || headers === null || sendForAllActions === null) return <></>;
+  if (projectId===undefined) return <></>;
   return <Block name='webhook'>
     <Elem name='title'>
       <><Elem tag='span' name='title-base'>Webhooks</Elem>  /  {webhook===null? 'New Webhook' : 'Edit Webhook'}</>
@@ -90,9 +99,9 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack, onSelectA
           params={webhook===null ? {} : { pk: webhook.id }}
           formData={webhook}
           prepareData={(data) => {
-            console.log(data, sendForAllActions, headers, actions);
             return {
               ...data,
+              'project': projectId,
               'send_for_all_actions': sendForAllActions,
               'headers': Object.fromEntries(headers),
               'actions': Array.from(actions),

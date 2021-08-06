@@ -8,6 +8,7 @@ import "./WebhookPage.styl";
 import { format } from 'date-fns';
 import { useAPI } from '../../providers/ApiProvider';
 import { WebhookDeleteModal } from './WebhookDeleteModal';
+import { useProject } from '../../providers/ProjectProvider';
 
 
 const WebhookList = ({ onSelectActive, onAddWebhook, webhooks, fetchWebhooks }) => {
