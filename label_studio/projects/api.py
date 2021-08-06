@@ -598,7 +598,7 @@ class TasksListAPI(generics.ListCreateAPIView,
         project = generics.get_object_or_404(Project.objects.for_user(self.request.user), pk=self.kwargs['pk'])
         task_ids = list(Task.objects.filter(project=project).values('id'))
         Task.objects.filter(project=project).delete()
-        emit_webhooks_for_instances(request.user.active_organization, WebhookAction.TASK_DELETED, task_ids)
+        emit_webhooks_for_instances(request.user.active_organization, None, WebhookAction.TASK_DELETED, task_ids)
         return Response(data={'tasks': task_ids}, status=204)
 
 

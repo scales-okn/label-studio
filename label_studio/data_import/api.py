@@ -169,7 +169,8 @@ class ImportAPI(generics.CreateAPIView):
         serializer = self.get_serializer(data=tasks, many=True)
         serializer.is_valid(raise_exception=True)
         task_instances = serializer.save(project_id=self.kwargs['pk'])
-        emit_webhooks_for_instances(self.request.user.active_organization, WebhookAction.TASK_CREATED, task_instances)
+        project = generics.get_object_or_404(Project.objects.for_user(self.request.user), pk=self.kwargs['pk'])
+        emit_webhooks_for_instances(self.request.user.active_organization, project, WebhookAction.TASK_CREATED, task_instances)
         return task_instances, serializer
 
     def create(self, request, *args, **kwargs):

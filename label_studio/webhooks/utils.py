@@ -37,6 +37,8 @@ def get_active_webhooks(organization, project, action):
     """Return all active webhooks for organization or project by action.
 
     If project is None - function return only organization hooks
+    else project is not None - function return project and organization hooks
+    Organization hooks are global hooks.
     """
     action_meta = WebhookAction.ACTIONS[action]
     if project and action_meta.get('organization-only'):
@@ -44,7 +46,7 @@ def get_active_webhooks(organization, project, action):
 
     return Webhook.objects.filter(
         Q(organization=organization)
-        & Q(project=project)
+        & (Q(project=project) | Q(project=None))
         & Q(is_active=True)
         & (
             Q(send_for_all_actions=True)
@@ -54,7 +56,7 @@ def get_active_webhooks(organization, project, action):
                 )
             )
         )
-    )
+    ).distinct()
 
 
 def emit_webhooks(organization, project, action, payload):
