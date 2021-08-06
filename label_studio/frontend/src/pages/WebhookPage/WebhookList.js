@@ -1,14 +1,33 @@
-import React, {} from 'react';
-import { LsPlus } from '../../assets/icons';
+import React, { useCallback } from 'react';
+import { LsCross, LsPencil, LsPlus } from '../../assets/icons';
 import { Button } from '../../components';
-import { Form, Label, Input } from '../../components/Form';
+import { Form, Label, Input, Toggle } from '../../components/Form';
 import { modal } from '../../components/Modal/Modal';
 import { Elem, Block } from '../../utils/bem';
 import "./WebhookPage.styl";
+import { format } from 'date-fns';
+import { useAPI } from '../../providers/ApiProvider';
+import { WebhookDeleteModal } from './WebhookDeleteModal';
 
 
-const WebhookList = ({ onSelectActive, onAddWebhook, webhooks }) => {
+const WebhookList = ({ onSelectActive, onAddWebhook, webhooks, fetchWebhooks }) => {
+
+  const api = useAPI();
+
   if (webhooks === null) return <></>;
+
+  const onActiveChange = useCallback( async (event) => {
+    let value = event.target.checked;
+    await api.callApi('updateWebhook', {
+      params: {
+        pk: event.target.name,
+      },
+      body: {
+        is_active: value,
+      },
+    });
+    await fetchWebhooks();
+  }, [api]);
 
   return <Block name='webhook'>
     <Elem name='controls'>
@@ -16,21 +35,42 @@ const WebhookList = ({ onSelectActive, onAddWebhook, webhooks }) => {
         Add Webhook
       </Button>
     </Elem>
-    <Elem name='content'>
+    <Elem>
       {webhooks.length === 0? 
         <p>Add new webhooks here.</p> 
         :
         <Block name='webhook-list'>
           {
             webhooks.map(
-              (obj) => <Elem key={obj.id} name='item' onClick={() => onSelectActive(obj.id)}>
-                <Elem tag='span' name='item-status' mod={{ active: obj.is_active }}>
+              (obj) => <Elem key={obj.id} name='item'>
+                <Elem name='item-active'>
+                  <Toggle
+                    name={obj.id}
+                    checked={obj.is_active}
+                    onChange={onActiveChange} 
+                  />
                 </Elem>
-                <Elem name='item-url'>
+                <Elem name='item-url' onClick={() => onSelectActive(obj.id)}>
                   {obj.url}
                 </Elem>
-                <Elem name='item-type'>
-                  {obj.send_for_all}
+                <Elem name='item-date'>
+                  Created {format(new Date(obj.created_at), 'dd MMM yyyy, HH:mm')}
+                </Elem>
+                <Elem name='item-control'>
+                  <Button
+                    onClick={() => onSelectActive(obj.id)}
+                    icon={<LsPencil />}
+                  >Edit</Button>
+                  <Button
+                    onClick={()=> WebhookDeleteModal({ 
+                      onDelete: async ()=>{
+                        await api.callApi('deleteWebhook', {params:{pk:obj.id}});
+                        await fetchWebhooks();
+                      },
+                    })}
+                    look='danger'
+                    icon={<LsCross />}
+                  >Delete</Button>
                 </Elem>
               </Elem>,
             )

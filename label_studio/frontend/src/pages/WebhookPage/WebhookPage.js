@@ -33,6 +33,7 @@ const Webhook = () => {
   }
   if (activeWebhook==='new') {
     return <WebhookDetail
+      onSelectActive={setActiveWebhook}
       onBack={() => setActiveWebhook(null)}
       webhook={null}
       fetchWebhooks={fetchWebhooks}
@@ -41,10 +42,12 @@ const Webhook = () => {
     return <WebhookList
       onSelectActive={setActiveWebhook}
       onAddWebhook={()=>{setActiveWebhook('new');}}
+      fetchWebhooks={fetchWebhooks}
       webhooks={webhooks}       
     />;
   } else {
     return <WebhookDetail
+      onSelectActive={setActiveWebhook}
       onBack={() => setActiveWebhook(null)}
       webhook={webhooks[webhooks.findIndex((x) => x.id === activeWebhook)]}
       fetchWebhooks={fetchWebhooks}

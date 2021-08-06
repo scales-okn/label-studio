@@ -11,9 +11,10 @@ import { Space } from '../../components/Space/Space';
 import { useProject } from '../../providers/ProjectProvider';
 import { modal } from '../../components/Modal/Modal';
 import { useModalControls } from "../../components/Modal/ModalPopup";
+import { WebhookDeleteModal } from "./WebhookDeleteModal";
+import { format } from 'date-fns';
 
-
-const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
+const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack, onSelectActive }) => {
 
   // if webhook === null - create mod
   // else update
@@ -21,9 +22,14 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
 
   const api = useAPI(); 
   const {project} = useProject();
-  const [headers, setHeaders] = useState([]);
-  const [sendForAllActions, setSendForAllActions] = useState(true);
-  const [actions, setActions] = useState(new Set());
+  const [headers, setHeaders] = useState(Object.entries(webhook?.headers || []));
+  const [sendForAllActions, setSendForAllActions] = useState(webhook ? webhook.send_for_all_actions : true);
+  const [actions, setActions] = useState(new Set(webhook?.actions));
+  const [isActive, setIsActive] = useState(webhook ? webhook.is_active : true);
+  const [sendPayload, setSendPayload] = useState(webhook ? webhook.send_payload : true);
+
+  console.log(actions);
+
 
   const onAddHeaderClick = () => {
     if (!(headers.find(([k]) => k === ''))) {
@@ -61,11 +67,15 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
       setHeaders([]);
       setSendForAllActions(true);
       setActions(new Set());
+      setIsActive(true);
+      setSendPayload(true);
       return;
     }
     setHeaders(Object.entries(webhook.headers));
     setSendForAllActions(webhook.send_for_all_actions);
     setActions(new Set(webhook.actions));
+    setIsActive(webhook.is_active);
+    setSendPayload(webhook.send_payload);
   }, [webhook]);
 
   // if (webhook === null || headers === null || sendForAllActions === null) return <></>;
@@ -80,26 +90,42 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
           params={webhook===null ? {} : { pk: webhook.id }}
           formData={webhook}
           prepareData={(data) => {
+            console.log(data, sendForAllActions, headers, actions);
             return {
               ...data,
               'send_for_all_actions': sendForAllActions,
               'headers': Object.fromEntries(headers),
               'actions': Array.from(actions),
+              'is_active': isActive,
+              'send_payload': sendPayload,
             };
           }}
           onSubmit={async (response) => {
             if (!response.error_message) {
               await fetchWebhooks();
+              if(webhook===null){
+                onSelectActive(response.id);
+              }
             }
           }}
         >
-          <Form.Row style={{marginBottom: '40px'}} columnCount={1}>
+          <Form.Row 
+            style={{marginBottom: '40px'}}
+            columnCount={1}
+          >
             <Label text='Payload URL' style={{marginLeft: '-16px'}} large></Label>
             <Space className={rootClass.elem('url-space')}>
-              <Input name="url" className={rootClass.elem('url-input')} placeholder="URL" />
+              <Input 
+                name="url" 
+                className={rootClass.elem('url-input')} 
+                placeholder="URL" />
               <Space align='end' className={rootClass.elem('activator')}>
                 <span className={rootClass.elem('black-text')}>Is Active</span>
-                <Toggle name="is_active" />
+                <Toggle 
+                  skip
+                  checked={isActive} 
+                  onChange={(e) => { setIsActive(e.target.checked); }} 
+                />
               </Space>
             </Space>
           </Form.Row>
@@ -108,7 +134,10 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
               <div className={rootClass.elem('headers-content')}>
                 <Space spread className={rootClass.elem('headers-control')}>
                   <Label text="Headers" large />
-                  <Button disabled={headers.find(([k]) => k === '')} type='button' onClick={onAddHeaderClick} 
+                  <Button 
+                    disabled={headers.find(([k]) => k === '')} 
+                    type='button' 
+                    onClick={onAddHeaderClick} 
                     className={rootClass.elem('headers-add')}
                     icon={<LsPlus />}
                   />
@@ -144,10 +173,19 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
             </Elem>
             <Elem name='content'>
               <Elem name='content-row'>
-                <Toggle name="send_payload" label="Send payload"></Toggle>
+                <Toggle 
+                  skip
+                  checked={sendPayload}
+                  onChange={(e) => { setSendPayload(e.target.checked); }}
+                  label="Send payload" />
+
               </Elem>
               <Elem name='content-row'>
-                <Toggle skip checked={sendForAllActions} label="Send for all actions" onChange={(e) => { setSendForAllActions(e.target.checked); }} />
+                <Toggle 
+                  skip 
+                  checked={sendForAllActions} 
+                  label="Send for all actions" 
+                  onChange={(e) => { setSendForAllActions(e.target.checked); }} />
               </Elem>
               <div >
                 {
@@ -160,7 +198,13 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
                         {Object.entries(webhooksInfo).map(([key, value]) => {
                           return <Form.Row key={key} columnCount={1}>
                             <div>
-                              <Toggle skip name={key} type='checkbox' label={value.name} onChange={onActionChange} checked={actions.has(key)}></Toggle>
+                              <Toggle 
+                                skip 
+                                name={key} 
+                                type='checkbox' 
+                                label={value.name} 
+                                onChange={onActionChange} 
+                                checked={actions.has(key)}></Toggle>
                             </div>
                           </Form.Row>;
                         })}
@@ -173,46 +217,24 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
             </Elem>
           </Block>
           <Elem name='controls'>
-            <Button 
-              look="danger"
-              type='button'
-              className={rootClass.elem('delete-button')}
-              onClick={ ()=> {
-                modal({
-                  title: "Delete",
-                  body: ()=>{
-                    const ctrl = useModalControls();
-                    return (<div>
-                      <p className={rootClass.elem('modal-text')}>
-                      Are you sure you want to delete the webhook? This action
-                      cannot be undone.  
-                      </p>
-                      <Space align="end">
-                        <Button 
-                          className={rootClass.elem('width-button')} 
-                          onClick={()=>{ctrl.hide();}}>
-                            Cancel
-                        </Button>
-                        <Button 
-                          look="danger"
-                          className={rootClass.elem('width-button')}
-                          onClick={
-                            async ()=>{
-                              await api.callApi('deleteWebhook', {params:{pk:webhook.id}});
-                              onBack();
-                              await fetchWebhooks();
-                              ctrl.hide();
-                            }
-                          }
-                        >Delete</Button>
-                      </Space>
-                    </div>);},
-                  style: { width: 512 },
-                });
-                
-              }}>
+            {
+              webhook === null ?
+                null
+                :
+                <Button 
+                  look="danger"
+                  type='button'
+                  className={rootClass.elem('delete-button')}
+                  onClick={()=> WebhookDeleteModal({ 
+                    onDelete: async ()=>{
+                      await api.callApi('deleteWebhook', {params:{pk:webhook.id}});
+                      onBack();
+                      await fetchWebhooks();
+                    },
+                  })}>
                 Delete Webhook...
-            </Button>
+                </Button>
+            }
             <Button 
               type='button'
               className={rootClass.elem('cancel-button')}
@@ -223,7 +245,7 @@ const WebhookDetail = ({ webhook, webhooksInfo, fetchWebhooks, onBack }) => {
               primary
               className={rootClass.elem('save-button')}
             >
-              Save
+              { webhook===null ? 'Add Webhook': 'Save' }
             </Button>
           </Elem>
         </Form>

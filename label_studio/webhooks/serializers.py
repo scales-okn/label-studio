@@ -31,6 +31,7 @@ class WebhookSerializer(serializers.ModelSerializer):
         actions = attrs.pop('_actions', [])
         instance = Webhook(**attrs)
         instance.validate_actions(actions)
+        attrs['_actions'] = actions
         return attrs
 
     def create(self, validated_data):
