@@ -13,62 +13,65 @@ from webhooks.utils import emit_webhooks, emit_webhooks_for_instances, run_webho
 
 
 @pytest.fixture
-def webhook(configured_project):
+def organization_webhook(configured_project):
     organization = configured_project.organization
-    uri = 'http://127.0.0.1:8000/api/webhook/'
+    uri = 'http://127.0.0.1:8000/api/organization/'
     return Webhook.objects.create(
         organization=organization,
+        project=None,
+        url=uri,
+    )
+
+
+@pytest.fixture
+def project_webhook(configured_project):
+    organization = configured_project.organization
+    uri = 'http://127.0.0.1:8000/api/project/'
+    return Webhook.objects.create(
+        organization=organization,
+        project=configured_project,
         url=uri,
     )
 
 
 @pytest.mark.django_db
-def test_run_webhook(setup_project_dialog, webhook):
+def test_run_webhook(setup_project_dialog, organization_webhook):
+    webhook = organization_webhook
     with requests_mock.Mocker(real_http=True) as m:
         m.register_uri('POST', webhook.url)
-        run_webhook(webhook, WebhookAction.PROJECT_CREATED, {'data': 'test'})
+        run_webhook(organization_webhook, WebhookAction.PROJECT_CREATED, {'data': 'test'})
+
+    request_history = m.request_history
+    assert len(request_history) == 1
+    assert request_history[0].method == 'POST'
+    assert request_history[0].url == organization_webhook.url
+    TestCase().assertDictEqual(request_history[0].json(), {'action': WebhookAction.PROJECT_CREATED, 'data': 'test'})
+
+
+@pytest.mark.django_db
+def test_emit_webhooks(setup_project_dialog, organization_webhook):
+    webhook = organization_webhook
+    with requests_mock.Mocker(real_http=True) as m:
+        m.register_uri('POST', webhook.url)
+        emit_webhooks(webhook.organization, webhook.project, WebhookAction.PROJECT_CREATED, {'data': 'test'})
 
     request_history = m.request_history
     assert len(request_history) == 1
     assert request_history[0].method == 'POST'
     assert request_history[0].url == webhook.url
-    TestCase().assertDictEqual(
-        request_history[0].json(),
-        {
-            'action': WebhookAction.PROJECT_CREATED,
-            'data': 'test'
-        }
-    )
-
-@pytest.mark.django_db
-def test_emit_webhooks(setup_project_dialog, webhook):
-    with requests_mock.Mocker(real_http=True) as m:
-        m.register_uri('POST', webhook.url)
-        emit_webhooks(webhook.organization, WebhookAction.PROJECT_CREATED, {'data': 'test'})
-
-    request_history = m.request_history
-    assert len(request_history) == 1
-    assert request_history[0].method == 'POST'
-    assert request_history[0].url == webhook.url
-    TestCase().assertDictEqual(
-        request_history[0].json(),
-        {
-            'action': WebhookAction.PROJECT_CREATED,
-            'data': 'test'
-        }
-    )
+    TestCase().assertDictEqual(request_history[0].json(), {'action': WebhookAction.PROJECT_CREATED, 'data': 'test'})
 
 
 @pytest.mark.django_db
-def test_emit_webhooks_for_instances(setup_project_dialog, webhook):
+def test_emit_webhooks_for_instances(setup_project_dialog, organization_webhook):
+    webhook = organization_webhook
     project_titles = [f'Projects {i}' for i in range(1, 10)]
-    projects = [
-        Project.objects.create(title=title)
-        for title in project_titles
-    ]
+    projects = [Project.objects.create(title=title) for title in project_titles]
     with requests_mock.Mocker(real_http=True) as m:
         m.register_uri('POST', webhook.url)
-        emit_webhooks_for_instances(webhook.organization, WebhookAction.PROJECT_CREATED, instances=projects)
+        emit_webhooks_for_instances(
+            webhook.organization, webhook.project, WebhookAction.PROJECT_CREATED, instances=projects
+        )
     assert len(m.request_history) == 1
     assert m.request_history[0].method == 'POST'
     data = m.request_history[0].json()
@@ -78,7 +81,8 @@ def test_emit_webhooks_for_instances(setup_project_dialog, webhook):
 
 
 @pytest.mark.django_db
-def test_exception_catch(webhook):
+def test_exception_catch(organization_webhook):
+    webhook = organization_webhook
     with requests_mock.Mocker(real_http=True) as m:
         m.register_uri('POST', webhook.url, exc=requests.exceptions.ConnectTimeout)
         result = run_webhook(webhook, WebhookAction.PROJECT_CREATED)
@@ -87,8 +91,10 @@ def test_exception_catch(webhook):
 
 # PROJECT
 @pytest.mark.django_db
-def test_webhooks_for_projects(configured_project, business_client, webhook):
-    # create/update/delete project thrught API
+def test_webhooks_for_projects(configured_project, business_client, organization_webhook):
+    webhook = organization_webhook
+
+    # create/update/delete project through API
     # PROJECT_CREATED
     with requests_mock.Mocker(real_http=True) as m:
         m.register_uri('POST', webhook.url)
@@ -126,7 +132,8 @@ def test_webhooks_for_projects(configured_project, business_client, webhook):
 
 
 @pytest.mark.django_db
-def test_webhooks_for_tasks(configured_project, business_client, webhook):
+def test_webhooks_for_tasks(configured_project, business_client, organization_webhook):
+    webhook = organization_webhook
     # create/update/delete
     # CREATE
     with requests_mock.Mocker(real_http=True) as m:
@@ -134,10 +141,13 @@ def test_webhooks_for_tasks(configured_project, business_client, webhook):
         response = business_client.post(
             reverse('tasks:api:task-list'),
             data=json.dumps(
-                {'project': configured_project.id,
-                 'data': {'meta_info': 'meta info A', 'text': 'text A'}, }
+                {
+                    'project': configured_project.id,
+                    'data': {'meta_info': 'meta info A', 'text': 'text A'},
+                }
             ),
-            content_type="application/json",)
+            content_type="application/json",
+        )
     assert response.status_code == 201
     assert len(m.request_history) == 1
     assert m.request_history[0].json()['action'] == WebhookAction.TASK_CREATED
@@ -148,9 +158,13 @@ def test_webhooks_for_tasks(configured_project, business_client, webhook):
     webhook.save()
     with requests_mock.Mocker(real_http=True) as m:
         m.register_uri('POST', webhook.url)
-        response = business_client.put(reverse('tasks:api:task-detail', kwargs={'pk': task_id}),
-                                       data=json.dumps({'data': {'meta_info': 'meta info B', 'text': 'text B'}},),
-                                       content_type="application/json",)
+        response = business_client.put(
+            reverse('tasks:api:task-detail', kwargs={'pk': task_id}),
+            data=json.dumps(
+                {'data': {'meta_info': 'meta info B', 'text': 'text B'}},
+            ),
+            content_type="application/json",
+        )
 
     assert response.status_code == 200
     assert len(m.request_history) == 1
