@@ -53,4 +53,7 @@ class APIViewVirtualMethodMixin(object):
 
 class DummyModelMixin():
     def has_permission(self, user):
-        return True
+        if user.is_staff:
+            return True
+        else:
+            return self.is_published
