@@ -124,8 +124,6 @@ class ProjectListAPI(generics.ListCreateAPIView):
 
     def get_queryset(self):
         projects =  Project.objects.with_counts().filter(organization=self.request.user.active_organization)
-        if not self.request.user.is_staff:
-            projects = projects.filter(is_published=True)
         return projects
 
     def get_serializer_context(self):

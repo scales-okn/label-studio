@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 
 from users.models import User
-from projects.models import Project
+from projects.models import Project, ProjectGroup, UserGroup
 from ml.models import MLBackend, MLBackendTrainJob
 from tasks.models import Task, Annotation
 from organizations.models import Organization
@@ -26,8 +26,10 @@ class UserAdminShort(UserAdmin):
                           ('Important dates', {'fields': ('last_login', 'date_joined')}))
         
 
-admin.site.register(User, UserAdminShort)
+admin.site.register(User)
+admin.site.register(UserGroup)
 admin.site.register(Project)
+admin.site.register(ProjectGroup)
 admin.site.register(MLBackend)
 admin.site.register(MLBackendTrainJob)
 admin.site.register(Task)

@@ -10,6 +10,8 @@ app_name = 'projects'
 
 # reverse for projects:name
 _urlpatterns = [
+    path('manage', views.project_manage, name='project-manage'),
+
     path('', views.project_list, name='project-index'),
     path('<int:pk>/settings/', views.project_settings, name='project-settings', kwargs={'sub_path': ''}),
     path('<int:pk>/settings/<sub_path>', views.project_settings, name='project-settings-anything'),

@@ -1,0 +1,128 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+<a class='btn btn-sm btn-outline-dark float-end me-5' href="/projects">
+	Back to Label Studio
+</a>
+<div class='col-10 mt-5 mx-auto'>
+	<div class='row'>
+		<div class='col pe-5'>
+			<h2>Projects</h2>
+
+			<form class='mt-5' method='post'>
+				{% csrf_token %}
+				<h4>Project Groups</h4>
+				<label>Create new project group:</label>
+				<div class="input-group mb-3">
+					<input type="text" name='create_project_group_name' class="form-control" placeholder="Project Group Name">
+					<button class="btn btn-outline-dark" name='create_project_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				<label>Add project to group</label>
+				<div class="input-group mb-4">
+					<select name="add_project_to_group_project" class='form-select form-control' placeholder='Project'>
+						{% for project in projects %}
+							{% if not project.group %}
+								<option value="{{project.id}}">{{project.title}}</option>
+							{% endif %}
+						{% endfor %}
+					</select>
+					<select name="add_project_to_group_group" class='form-select form-control' placeholder='Group'>
+						{% for project_group in project_groups %}
+							<option value="{{project_group.id}}">{{project_group.name}}</option>
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-dark" name='add_project_to_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				{% for group, group_projects in grouped_projects.items %}
+					<h5 class='mt-4'>{{group}}</h5>
+					{% for project in group_projects %}
+						<p class='ms-3 mb-0'>
+								<button class='btn' name='remove_project_from_group' value="{{project.id}}" type='submit'>
+									<i class="bi bi-x"></i>
+								</button>
+								<span>
+									{{ project.title }}
+								</span>
+							</p>
+					{% endfor %}
+				{% endfor %}
+			</form>
+		</div>
+
+
+
+
+		<div class='col-4' method='post'>
+			<h2>Users</h2>
+			<form class='mt-5' method='post'>
+				{% csrf_token %}
+				<h4>Staff Users</h4>
+				<label>Add new staff:</label>
+				<div class="input-group mb-3">
+					<select name="add_staff_id" class='form-select form-control'>
+						{% for user in users %}
+							{% if not user.is_staff %}
+								<option value="{{user.id}}">{{user}}</option>
+							{% endif %}
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-dark" name='add_staff' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				{% for user in users %}
+					{% if user.is_staff %}
+						<p class='mb-0'>
+							{% if not user.is_superuser %}
+								<button class='btn' name='remove_staff' value="{{user.id}}" type='submit'>
+									<i class="bi bi-x"></i>
+								</button>
+							{% else %}
+								<button class='btn' >
+									<i class="bi bi-lock"></i>
+								</button>
+							{% endif %}
+							<span>
+								{{ user }}
+							</span>
+						</p>
+					{% endif %}
+				{% endfor %}
+			</form>
+
+			<form class='mt-5' method='post'>
+				{% csrf_token %}
+				<h4>User Groups</h4>
+				<label>Create user group</label>
+				<div class="input-group mb-3">
+					<input type="text" name='add_user_group_name' class="form-control" placeholder="User Group Name">
+					<button class="btn btn-outline-dark" name='add_user_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				<label>Add user to group</label>
+				<div class="input-group mb-4">
+					<select name="add_user_to_group_user" class='form-select form-control' placeholder='User'>
+						{% for user in users %}
+							<option value="{{user.id}}">{{user}}</option>
+						{% endfor %}
+					</select>
+					<select name="add_user_to_group_group" class='form-select form-control' placeholder='Group'>
+						{% for user_group in user_groups %}
+							<option value="{{user_group.id}}">{{user_group.name}}</option>
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-dark" name='add_user_to_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				{% for user_group in user_groups %}
+					<h5 class='mt-4'>{{user_group.name}}</h5>
+					{% for user in user_group.users %}
+						<p class='ms-3 mb-0'>
+							<button class='btn' name='remove_user_from_group' value="{{user.id}}-{{user_group.id}}" type='submit'>
+								<i class="bi bi-x"></i>
+							</button>
+							<span>
+								{{ user }}
+							</span>
+						</p>
+					{% endfor %}
+				{% endfor %}
+			</form>
+		</div>
+	</div>
+</div>

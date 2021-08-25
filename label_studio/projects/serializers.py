@@ -71,7 +71,7 @@ class ProjectSerializer(DynamicFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = Project
         extra_kwargs = {'memberships': {'required': False}, 'title': {'required': False}, 'created_by': {'required': False}}
-        fields = ['id', 'title', 'description', 'label_config', 'expert_instruction', 'show_instruction', 'show_skip_button',
+        fields = ['id', 'title', 'description', 'group', 'label_config', 'expert_instruction', 'show_instruction', 'show_skip_button',
                   'enable_empty_annotation', 'show_annotation_history', 'organization', 'color',
                   'maximum_annotations', 'is_published', 'model_version', 'is_draft', 'created_by', 'created_at',
                   'min_annotations_to_start_training', 'start_training_on_annotation_update',

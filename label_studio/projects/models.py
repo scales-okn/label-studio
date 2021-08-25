@@ -18,9 +18,9 @@ from core.label_config import (
     parse_config, validate_label_config, extract_data_types, get_all_object_tag_names, config_line_stipped,
     get_sample_task, get_all_labels, get_all_control_tag_tuples, get_annotation_tuple
 )
+from django.contrib.auth import get_user_model
 
 logger = logging.getLogger(__name__)
-
 
 class ProjectManager(models.Manager):
     def for_user(self, user):
@@ -58,12 +58,36 @@ class ProjectManager(models.Manager):
         )
 
 
-ProjectMixin = load_func(settings.PROJECT_MIXIN)
 
+
+class ProjectSample(models.Model):
+    name = models.CharField(max_length=300)
+
+
+class ProjectGroup(models.Model):
+    name = models.CharField(max_length=300)
+
+    def __str__(self):
+        return self.name
+
+
+
+class UserGroup(models.Model):
+    name = models.CharField(max_length=300)
+    users = models.ManyToManyField(get_user_model())
+
+class ProjectUser(models.Model):
+    project = models.ForeignKey('Project', on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+
+
+ProjectMixin = load_func(settings.PROJECT_MIXIN)
 
 class Project(ProjectMixin, models.Model):
     """
     """
+    sample = models.ForeignKey('ProjectSample', on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey('ProjectGroup', on_delete=models.CASCADE, null=True, blank=True)
     objects = ProjectManager()
     __original_label_config = None
     
@@ -87,7 +111,7 @@ class Project(ProjectMixin, models.Model):
     token = models.CharField(_('token'), max_length=256, default=create_hash, null=True, blank=True)
     result_count = models.IntegerField(_('result count'), default=0, help_text='Total results inside of annotations counter')
     color = models.CharField(_('color'), max_length=16, default='#FFFFFF', null=True, blank=True)
-    
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name='created_projects',
