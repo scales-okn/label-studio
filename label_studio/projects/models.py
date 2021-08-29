@@ -58,8 +58,6 @@ class ProjectManager(models.Manager):
         )
 
 
-
-
 class ProjectSample(models.Model):
     name = models.CharField(max_length=300)
 
@@ -72,15 +70,9 @@ class ProjectGroup(models.Model):
         return self.name
 
 
-
 class UserGroup(models.Model):
     name = models.CharField(max_length=300)
     users = models.ManyToManyField(get_user_model())
-
-class ProjectUser(models.Model):
-    project = models.ForeignKey('Project', on_delete=models.CASCADE)
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-
 
 ProjectMixin = load_func(settings.PROJECT_MIXIN)
 
