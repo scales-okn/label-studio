@@ -20,21 +20,16 @@ from organizations.models import Organization
 from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 
-from .labelstudio_connector import list_all_samples, import_tasks_from_mongo
+from .labelstudio_connector import list_all_samples, import_tasks_from_mongo, duplicate_project
 logger = logging.getLogger(__name__)
 
 
 def project_manage(request):
-    print(request.POST)
     if not request.user.is_staff:
         return redirect('projects:project-index')
 
-    sample_ids = [x['sample_id'] for x in list_all_samples()]
-    existing_sample_ids = [x['name'] for x in ProjectSample.objects.values('name')]
-    for sample_id in [x for x in sample_ids if x not in existing_sample_ids]:
-        sample = ProjectSample(name=sample_id)
-        sample.save()
-    print('SAMPLES', ProjectSample.objects.all())
+    print(request.POST)
+    #ProjectSample.objects.all().delete()
 
     if 'remove_staff' in request.POST:
         user = get_user_model().objects.get(id=request.POST['remove_staff'])
@@ -64,25 +59,70 @@ def project_manage(request):
         user_group.save()
 
     if 'create_project_group' in request.POST:
-        project_group = ProjectGroup(name=request.POST['create_project_group_name'])
-        project_group.save()
+        try:
+            if request.POST['create_project_group_template']:
+                template = Project.objects.get(id=request.POST['create_project_group_template'])
+                project_group = ProjectGroup(
+                    name=request.POST['create_project_group_name'],
+                    template=template,
+                )
+                project_group.save()
+        except Exception as e:
+            print(e)
 
-    if 'add_project_to_group' in request.POST:
-        project_group = ProjectGroup.objects.get(id=request.POST['add_project_to_group_group'])
-        project = Project.objects.get(id=request.POST['add_project_to_group_project'])
-        project.group = project_group
-        project.save()
+    if 'create_project' in request.POST:
+        try:
+            project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
+            sample = ProjectSample.objects.get(id=request.POST['create_project_sample'])
+            project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
+            project = Project.objects.get(id=project['id'])
+            import_tasks_from_mongo(sample.name, project.id)
+            project.group = project_group
+            project.sample = sample
+            project.save()
+        except Exception as e:
+            print(e)
 
-    if 'remove_project_from_group' in request.POST:
-        project = Project.objects.get(id=request.POST['remove_project_from_group'])
-        project.group = None
+    if 'sync_samples' in request.POST:
+        sample_ids = [x['sample_id'] for x in list_all_samples()]
+        existing_sample_ids = [x['name'] for x in ProjectSample.objects.values('name')]
+        for sample_id in [x for x in sample_ids if x not in existing_sample_ids]:
+            sample = ProjectSample(name=sample_id)
+            sample.save()
+
+    if 'remove_from_project' in request.POST:
+        remove_type, remove_id, project_id = request.POST['remove_from_project'].split('-')
+        project = Project.objects.get(id=project_id)
+        if remove_type == 'group':
+            user_group = UserGroup.objects.get(id=remove_id)
+            project.user_groups.remove(user_group)
+        elif remove_type == 'user':
+            user = get_user_model().objects.get(id=remove_id)
+            project.users.remove(user)
         project.save()
+    else:
+        if 'add_to_project' in request.POST:
+            for info in request.POST.getlist('add_to_project'):
+                try:
+                    add_type, add_id, project_id = info.split('-')
+                    project = Project.objects.get(id=project_id)
+                    if add_type == 'group':
+                        user_group = UserGroup.objects.get(id=add_id)
+                        project.user_groups.add(user_group)
+                    elif add_type == 'user':
+                        user = get_user_model().objects.get(id=add_id)
+                        project.users.add(user)
+                    project.save()
+                except Exception as e:
+                    print(e)
+
+
 
     projects = Project.objects.all()
 
     grouped_projects = {}
     for project in projects:
-        if project.group is not None:
+        if not project.is_template:
             grouped_projects[project.group] = grouped_projects.get(project.group, []) + [project]
 
     users = get_user_model().objects.all()
@@ -93,6 +133,7 @@ def project_manage(request):
         'user_groups': user_groups,
         'projects': projects,
         'project_groups': ProjectGroup.objects.all(),
+        'samples': ProjectSample.objects.all(),
         'grouped_projects': grouped_projects,
     })
 

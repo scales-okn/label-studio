@@ -22,7 +22,7 @@ _urlpatterns = [
 # reverse for projects:api:name
 _api_urlpatterns = [
     # CRUD
-    path('', api.ProjectListAPI.as_view(), name='project-list'),
+    path('', api.ProjectListDisplayAPI.as_view(), name='project-list'),
     path('<int:pk>/', api.ProjectAPI.as_view(), name='project-detail'),
 
     # Get next task

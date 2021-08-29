@@ -119,7 +119,7 @@ def create_project(title, label_config=None, headers=headers, prevent_title_dupl
     else:
         return resp.json()
     
-def duplicate_project(proj_id, new_title, headers, prevent_title_duplication=True, settings_only=True):
+def duplicate_project(proj_id, new_title, headers=headers, prevent_title_duplication=True, settings_only=True):
     '''
     Duplicate a label studio project
     
@@ -136,6 +136,9 @@ def duplicate_project(proj_id, new_title, headers, prevent_title_duplication=Tru
     # Step 1: Get data on the project to be duplicated
     url = f"{api_url}/projects/{proj_id}/"
     resp1 = requests.get(url, headers=headers)
+    print(headers)
+    print(resp1)
+    print(resp1.content)
     
     if not resp1.ok:
         raise ValueError( repr_error(resp1) )

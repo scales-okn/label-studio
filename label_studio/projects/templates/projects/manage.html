@@ -11,38 +11,75 @@
 			<form class='mt-5' method='post'>
 				{% csrf_token %}
 				<h4>Project Groups</h4>
-				<label>Create new project group:</label>
+				<label>Create project group:</label>
 				<div class="input-group mb-3">
-					<input type="text" name='create_project_group_name' class="form-control" placeholder="Project Group Name">
-					<button class="btn btn-outline-dark" name='create_project_group' type="submit"><i class="bi bi-plus-lg"></i></button>
-				</div>
-				<label>Add project to group</label>
-				<div class="input-group mb-4">
-					<select name="add_project_to_group_project" class='form-select form-control' placeholder='Project'>
+					<input type="text" name='create_project_group_name' class="form-control" placeholder="Project group name">
+					<select name="create_project_group_template" class='form-select form-control'>
+						<option>Select a template</option>
 						{% for project in projects %}
-							{% if not project.group %}
+							{% if project.is_template %}
 								<option value="{{project.id}}">{{project.title}}</option>
 							{% endif %}
 						{% endfor %}
 					</select>
-					<select name="add_project_to_group_group" class='form-select form-control' placeholder='Group'>
+					<button class="btn btn-outline-dark" name='create_project_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+				</div>
+				<label>Create project:</label>
+				<div class="input-group mb-4">
+					<input type="text" name='create_project_name' class="form-control" placeholder="Project name">
+					<select name="create_project_project_group" class='form-select form-control'>
+						<option>Select project group</option>
 						{% for project_group in project_groups %}
-							<option value="{{project_group.id}}">{{project_group.name}}</option>
+							<option value="{{project_group.id}}">{{project_group.name}} ({{project_group.template.title}})</option>
 						{% endfor %}
 					</select>
-					<button class="btn btn-outline-dark" name='add_project_to_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+					<select name="create_project_sample" class='form-select form-control'>
+						<option>Select data sample</option>
+						{% for sample in samples %}
+							<option value="{{sample.id}}">{{sample.name}}</option>
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-dark" name='sync_samples' type="submit"><i class="h5 bi bi-arrow-repeat"></i></button>
+					<button class="btn btn-outline-dark" name='create_project' type="submit"><i class="bi bi-plus-lg"></i></button>
 				</div>
+			</form>
+			<form method='post'>
+				{% csrf_token %}
 				{% for group, group_projects in grouped_projects.items %}
 					<h5 class='mt-4'>{{group}}</h5>
 					{% for project in group_projects %}
 						<p class='ms-3 mb-0'>
-								<button class='btn' name='remove_project_from_group' value="{{project.id}}" type='submit'>
-									<i class="bi bi-x"></i>
-								</button>
-								<span>
-									{{ project.title }}
-								</span>
-							</p>
+							<a class='mb-0' style='font-size:18px;color:black; text-decoration: none;' href="/projects/{{project.id}}">
+								{{ project.title }}
+							</a>
+							{% for user_group in project.user_groups.all %}
+								<p class='ms-3 mb-0' style='font-size:14px;'>
+									<button class='btn p-0' name='remove_from_project' value="group-{{user_group.id}}-{{project.id}}" type='submit'>
+										<i class="bi bi-x"></i>
+									</button>
+									Group: {{ user_group.name }}
+								</p>
+							{% endfor %}
+							{% for user in project.users.all %}
+								<p class='ms-3 mb-0' style='font-size:14px;'>
+									<button class='btn p-0' name='remove_from_project' value="user-{{user.id}}-{{project.id}}" type='submit'>
+										<i class="bi bi-x"></i>
+									</button>
+									User: {{ user.username }}
+								</p>
+							{% endfor %}
+							<select name="add_to_project" class='ms-4 form-select form-select-sm' style='line-height: 14px;height: 24px;font-size:12px;border: 0; width:160px' onchange="this.form.submit()">
+								<option>Add group or user</option>
+								<optgroup label="Groups">
+								{% for user_group in user_groups %}
+									<option value="group-{{user_group.id}}-{{project.id}}">{{user_group.name}}</option>
+								{% endfor %}
+								<optgroup label="Users">
+								{% for user in users %}
+									<option value="user-{{user.id}}-{{project.id}}">{{user.username}}</option>
+								{% endfor %}
+							</select>
+						</p>
 					{% endfor %}
 				{% endfor %}
 			</form>

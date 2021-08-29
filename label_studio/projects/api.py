@@ -24,7 +24,7 @@ from core.utils.common import conditional_atomic
 from core.utils.disable_signals import DisableSignals
 from core.label_config import config_essential_data_has_changed
 from projects.models import (
-    Project, ProjectSummary
+    Project, ProjectSummary, UserGroup
 )
 from projects.serializers import (
     ProjectSerializer, ProjectLabelConfigSerializer, ProjectSummarySerializer
@@ -123,7 +123,9 @@ class ProjectListAPI(generics.ListCreateAPIView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        projects =  Project.objects.with_counts().filter(organization=self.request.user.active_organization)
+        projects =  Project.objects.with_counts().filter(
+            organization=self.request.user.active_organization,
+        )
         return projects
 
     def get_serializer_context(self):
@@ -132,6 +134,8 @@ class ProjectListAPI(generics.ListCreateAPIView):
         return context
 
     def perform_create(self, ser):
+        if not self.request.user.is_staff:
+            raise Exception('You do not have permission to create project templates')
         try:
             project = ser.save(organization=self.request.user.active_organization)
         except IntegrityError as e:
@@ -145,6 +149,17 @@ class ProjectListAPI(generics.ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         return super(ProjectListAPI, self).post(request, *args, **kwargs)
+
+
+class ProjectListDisplayAPI(ProjectListAPI):
+    def get_queryset(self):
+        user_groups = UserGroup.objects.filter(users__in=[self.request.user])
+        projects =  Project.objects.with_counts().filter(
+            organization=self.request.user.active_organization,
+            is_template=False
+        ).filter(Q(users__in=[self.request.user]) | Q(user_groups__in=user_groups))
+        return projects
+
 
 
 @method_decorator(name='get', decorator=swagger_auto_schema(

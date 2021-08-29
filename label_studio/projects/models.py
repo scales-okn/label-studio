@@ -66,6 +66,7 @@ class ProjectSample(models.Model):
 
 class ProjectGroup(models.Model):
     name = models.CharField(max_length=300)
+    template = models.ForeignKey('Project', on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -86,6 +87,9 @@ ProjectMixin = load_func(settings.PROJECT_MIXIN)
 class Project(ProjectMixin, models.Model):
     """
     """
+    is_template = models.BooleanField(default=True)
+    users = models.ManyToManyField(get_user_model())
+    user_groups = models.ManyToManyField('UserGroup')
     sample = models.ForeignKey('ProjectSample', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('ProjectGroup', on_delete=models.CASCADE, null=True, blank=True)
     objects = ProjectManager()
