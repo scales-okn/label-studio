@@ -6,7 +6,11 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.resolve() / '.env')
+ENV_PATH = Path(__file__).resolve().parents[2]/ '.env'
+print(ENV_PATH)
+print('exists:', ENV_PATH.exists())
+load_env_success = load_dotenv(ENV_PATH)
+print('load_env_success:', load_env_success)
 
 # Replace with whatever needed to get the connector in 
 #sys.path.append( str(Path.cwd().parents[1]))
