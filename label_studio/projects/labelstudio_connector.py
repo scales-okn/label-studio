@@ -6,9 +6,8 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-ENV_PATH = Path(__file__).resolve().parents[2]/ '.env'
-print(ENV_PATH)
-print('exists:', ENV_PATH.exists())
+# For local testing not in docker container (otherwise will get env vars form docker)
+ENV_PATH = Path(__file__).resolve()/ '.env'
 load_env_success = load_dotenv(ENV_PATH)
 print('load_env_success:', load_env_success)
 
