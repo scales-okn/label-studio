@@ -20,10 +20,10 @@ services:
       LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
       LABEL_STUDIO_USERNAME: "${LABEL_STUDIO_USERNAME}"
       LABEL_STUDIO_PASSWORD: "${LABEL_STUDIO_PASSWORD}"
+      LABEL_STUDIO_PORT_EXT: "${LABEL_STUDIO_PORT_EXT:-8080}"
 #     volumes:
 #       - ./mydata:/label-studio/data:rw
     command: [ "./deploy/wait-for-postgres.sh", "bash", "/label-studio/deploy/start_label_studio.sh" ]
-
   db:
     image: postgres:11.5
     hostname: db
