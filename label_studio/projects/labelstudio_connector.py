@@ -7,8 +7,9 @@ import requests
 from dotenv import load_dotenv
 
 # For local testing not in docker container (otherwise will get env vars form docker)
-ENV_PATH = Path(__file__).resolve()/ '.env'
+ENV_PATH = Path(__file__).parent.resolve() / '.env'
 load_env_success = load_dotenv(ENV_PATH)
+print(ENV_PATH)
 print('load_env_success:', load_env_success)
 
 # Replace with whatever needed to get the connector in 
