@@ -62,8 +62,8 @@ COPY_KEYS = [
 ###
 
 def get_all_projects(headers=headers, verbose=False):
-    brief_keys = ('id', 'title', 'description', 'task_number')
-    res = requests.get(proj_url, headers=headers)
+    brief_keys = ('id', 'title', 'description', 'group', 'task_number')
+    res = requests.get(f"{proj_url}/all", headers=headers)
     all_projects = res.json()
     if verbose:
         return all_projects
