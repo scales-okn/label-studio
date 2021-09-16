@@ -17,7 +17,7 @@ print('load_env_success:', load_env_success)
 
 # Replace with whatever needed to get the connector in 
 #sys.path.append( str(Path.cwd().parents[1]))
-from .connector import SCALESMongo
+from connector import SCALESMongo
 
 # Mongo connection
 SM = SCALESMongo(database='annotations', env_file='.env')
