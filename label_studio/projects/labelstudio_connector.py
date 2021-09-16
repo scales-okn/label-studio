@@ -3,8 +3,11 @@ import sys
 import json
 from pathlib import Path
 
+import pymongo
 import requests
 from dotenv import load_dotenv
+
+VERSION = 'v0'
 
 # For local testing not in docker container (otherwise will get env vars form docker)
 ENV_PATH = Path(__file__).parent.resolve() / '.env'
@@ -217,36 +220,35 @@ def get_project_annotations(proj_id, headers=headers):
     else:
         raise ValueError( repr_error(resp) )
         
-def remap_annotation(value, kind):
+def remap_annotation(anno):
     ''' Remap annotations'''
     
+    kind = anno['result'][0]['type']
+    
     if kind=='choices':
-        labels = value['choices']
-        return labels
+        labels = anno['result'][0]['value']['choices']
     
     elif kind=='labels':
-        # Structured well already: includes keys ('start', 'end', 'text', 'labels')
-        if len(value['labels']) > 1:
-            raise ValueError("Don't know how to handle ner with multiple labels applied to same label-studio-annotation")
-        else:
-            value['label'] = value['labels'][0]
-            del value['labels']
-        return value
+        labels = [x['value'] for x in anno['result']]
     
     # Taxonomy might be useful for very specific hierarchy stuff, but not for now
     elif kind=='taxonomy':
-        labels = [",".join(x) for x in value["taxonomy"]]
-        return labels
+        labels = [",".join(x) for x in anno['result']["taxonomy"]]
     
+    return labels
+        
     
-def transform_tasks(tasks, project_id, task_data_keys=[], all_task_data=False):
+def transform_tasks(tasks,project_id, project_group, all_task_data=True, task_data_keys=[], **proj_kwargs):
     '''
     Parse the data returned from the tasks endpoint
     
     Inputs:
         - tasks (list): list of dicts, response from the tasks endpoint
-        - task_data_keys (list or tuple): a list of keys to grab from the tasks data (metadata supplied along with the data to be tagged)
+        - project_id (int): id of the project
+        - project_group (int or str): id or name of the project group
         - all_task_data (bool): if True, returns all data in the data dictionary (metadata about the tag)
+        - task_data_keys (list or tuple): a list of keys to grab from the tasks data (metadata supplied along with the data to be tagged)
+
     '''
     all_annos = []
     
@@ -260,27 +262,166 @@ def transform_tasks(tasks, project_id, task_data_keys=[], all_task_data=False):
             if not len(anno['result']):
                 continue
                 
-            # Will usually be a singleton list I think??
-            for res in anno['result']:
-                obj = {
-                    'annotator_id': anno['completed_by']['id'],
-                    'annotator_email': anno['completed_by']['email'],
-                    'task_data': {k:v for k,v in task['data'].items() if (k in task_data_keys) or all_task_data },
-                    'labels': remap_annotation(res['value'], kind=res['type']),
-                    'project_id': project_id,
-                    'created_at': anno['created_at'],
-                    'updated_at': anno['updated_at']
-                }
-                
-                all_annos.append(obj)
+            obj = {
+                'annotator_id': anno['completed_by']['id'],
+                'annotator_email': anno['completed_by']['email'],
+                'annotation_id': anno['id'],
+                'task_data': task['data'] if all_task_data else {k:v for k,v in task['data'].items() if k in ['text', *task_data_keys]},
+                'labels': remap_annotation(anno),
+                'created_at': anno['created_at'],
+                'updated_at': anno['updated_at'],
+                'project_id': project_id,
+                'project_group': project_group,
+                **proj_kwargs
+            }
+
+            all_annos.append(obj)
                 
     return all_annos
 
+def gen_scales_project_id(project_id, version=VERSION):
+    ''' Generate a scales project id, built off of labstud project id '''
+    return f"{project_id}_{version}"
+
+def update_mongo_projects(headers, db, version=VERSION):
+    ''' Export all project metadata to the annotations.projects collection '''
+    
+    project_metadata = get_all_projects(headers=headers, verbose=True)
+    # Generate scales id
+    for proj in project_metadata:
+        proj['scales_id'] = gen_scales_project_id(proj['id'])
+        
+    jobs = [
+        pymongo.UpdateOne(
+            filter = {'scales_id': proj['scales_id']},
+            update = {'$set': proj, '$currentDate':{'_updated':{'$type':'date'}}},
+            upsert = True
+        )
+        for proj in project_metadata
+    ]
+    try:
+        bulk_res = db['projects'].bulk_write(jobs, ordered=False)
+        return bulk_res
+    except pymongo.errors.BulkWriteError as bwe:
+        print(bwe.details)
 
 
+def get_project_labelset(project_id, db, version=VERSION):
+    ''' 
+    Get the full set of labels available for tagging on a project
+    
+    Inputs:
+        - project_id (int): The id of the project
+    '''
+    
+    # Go fetch from mongo
+    scales_id = gen_scales_project_id(project_id, version=version)
+    res = db.completed_annotations.find_one({'scales_id':scales_id}, {'parsed_label_config':1})
+    
+    # Assuming only one subkey, structure varies by config
+    subkey = list(res['parsed_label_config'].keys())[0]
+    
+    return {k:v for k,v in res['parsed_label_config'][subkey].items() if k in ('type', 'labels')}
+    
+    
+###
+# Creating a sample
+###
+def create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=False, **kwargs):
+    '''
+    Main sample creation function.
+    
+    Inputs:
+        - data_arr(list of dicts): Must be a list of dicts like so: 
+        [ {'data': {'text': 'sometext1'}}, {'data': {'text':'sometext2'}]
+        The innermost dictionaries can have additional keys that will be passed through
+        
+        - sample_id (str): identifier/name for the sample
+        - description (str): description of the sample
+        - case_types (list of str): list of case_types included in sample
+        - tags (list of str): list to start some tags for the sample to help describe it
+        - overwrite (bool): if False won't let you insert a sample if one with same sample_id already exists
+        - **kwargs: passed in to the sample collection
+    
+    '''
+    
+    if not overwrite:
+        samples = list_all_samples(db)
+        if sample_id in (sample['sample_id'] for sample in samples):
+            raise ValueError(f"Sample with name '{sample_id}' already exists. Choose a different name or use `overwrite`=True")
+    
+    
+    # Validate data_arr
+    for entry in data_arr:
+        assert type(entry)==dict
+        assert 'data' in entry
+        assert type(entry['data'])==dict
+        assert 'text' in entry['data']
+        assert type(entry['data']['text'])==str
+        
+    assert type(sample_id)==str
+    assert type(tags) in (list,tuple)
+    assert type(case_types) in (list,tuple)
+    
+    sample_collection = {
+        'sample_id': sample_id,
+        'description': description,
+        'tags': tags,
+        'case_types': case_types,
+        'sample_arr': data_arr,
+        **kwargs
+    }
+    
+    return db.samples.insert_one(sample_collection)
 
 
+def create_sample_from_cases(ucid2rows, sample_id, description, tags, case_types, db, overwrite=False, **kwargs):
+    '''
+    Create a sample by specifying ucids and rows, pulls data from mongo cases collection
+    
+    Inputs:
+        - ucid2rows (dict): dict with ucids as keys and iterable of docket row (ordinal) indexes to use in sample e.g. {'ucid1': [0,1,5], 'ucid2': [1], ...}
+        * See create_sample for other args
+    
+    '''
+    
+    cases_collection = SM.connection['scales'].cases
+    cases = cases_collection.find(
+        filter = {'ucid': {'$in': list(ucid2rows.keys()) }},
+        projection = {'ucid':1, 'docket':1}
+    )
+    
+    data_arr = []
+    for case in cases:
+        
+        entries = [
+            {'data': 
+                {
+                    'ucid': case['ucid'],
+                    'ord': ordinal,
+                    'ind': case['docket'][ordinal]['ind'],
+                    'text': case['docket'][ordinal]['docket_text']
+                }
+            }
+        
+            for ordinal in ucid2rows[case['ucid']]
+        ]
+        data_arr.extend(entries)
+        
+    return create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=overwrite, **kwargs)
 
-
-
+def create_sample_simple(str_arr, sample_id, description, tags,case_types,db,overwrite=False, **kwargs):
+    '''
+    Create a simple sample from an array of strings
+    
+    Inputs:
+        - str_arr (iterable of strings): an iterable of strings
+        * See create_sample for other args
+    '''
+    data_arr = [
+        {'data':{'text': x}}
+        for x in str_arr
+    ]
+    
+    return create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=overwrite, **kwargs)
         
