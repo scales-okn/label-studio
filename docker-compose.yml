@@ -27,7 +27,7 @@ services:
   db:
     image: postgres:11.5
     hostname: db
-#     restart: always
+    restart: always
     ports:
       - "${POSTGRES_PORT_EXT:-8080}:5432"
     environment:

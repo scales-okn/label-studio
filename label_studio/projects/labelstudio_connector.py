@@ -238,9 +238,9 @@ def remap_annotation(anno):
     return labels
         
     
-def transform_tasks(tasks,project_id, project_group, all_task_data=True, task_data_keys=[], **proj_kwargs):
+def transform_annotations(tasks,project_id, project_group, all_task_data=True, task_data_keys=[], **proj_kwargs):
     '''
-    Parse the data returned from the tasks endpoint
+    Parse the data returned from the export endpoint
     
     Inputs:
         - tasks (list): list of dicts, response from the tasks endpoint
@@ -263,6 +263,7 @@ def transform_tasks(tasks,project_id, project_group, all_task_data=True, task_da
                 continue
                 
             obj = {
+                'annotation_id': anno['id'],
                 'annotator_id': anno['completed_by']['id'],
                 'annotator_email': anno['completed_by']['email'],
                 'annotation_id': anno['id'],
@@ -327,7 +328,7 @@ def get_project_labelset(project_id, db, version=VERSION):
 ###
 # Creating a sample
 ###
-def create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=False, **kwargs):
+def create_sample(data_arr, sample_id, description, db=db, overwrite=False, **kwargs):
     '''
     Main sample creation function.
     
@@ -338,10 +339,8 @@ def create_sample(data_arr, sample_id, description, tags, case_types, db, overwr
         
         - sample_id (str): identifier/name for the sample
         - description (str): description of the sample
-        - case_types (list of str): list of case_types included in sample
-        - tags (list of str): list to start some tags for the sample to help describe it
         - overwrite (bool): if False won't let you insert a sample if one with same sample_id already exists
-        - **kwargs: passed in to the sample collection
+        - **kwargs: passed in to the sample collection under the metadata key
     
     '''
     
@@ -360,22 +359,18 @@ def create_sample(data_arr, sample_id, description, tags, case_types, db, overwr
         assert type(entry['data']['text'])==str
         
     assert type(sample_id)==str
-    assert type(tags) in (list,tuple)
-    assert type(case_types) in (list,tuple)
     
     sample_collection = {
         'sample_id': sample_id,
         'description': description,
-        'tags': tags,
-        'case_types': case_types,
         'sample_arr': data_arr,
-        **kwargs
+        'metadata': kwargs
     }
     
     return db.samples.insert_one(sample_collection)
 
 
-def create_sample_from_cases(ucid2rows, sample_id, description, tags, case_types, db, overwrite=False, **kwargs):
+def create_sample_from_cases(ucid2rows, sample_id, description, db=db, overwrite=False, **kwargs):
     '''
     Create a sample by specifying ucids and rows, pulls data from mongo cases collection
     
@@ -408,9 +403,9 @@ def create_sample_from_cases(ucid2rows, sample_id, description, tags, case_types
         ]
         data_arr.extend(entries)
         
-    return create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=overwrite, **kwargs)
+    return create_sample(data_arr, sample_id, description, db=db, overwrite=overwrite, **kwargs)
 
-def create_sample_simple(str_arr, sample_id, description, tags,case_types,db,overwrite=False, **kwargs):
+def create_sample_simple(str_arr, sample_id, description, db=db, overwrite=False, **kwargs):
     '''
     Create a simple sample from an array of strings
     
@@ -423,5 +418,48 @@ def create_sample_simple(str_arr, sample_id, description, tags,case_types,db,ove
         for x in str_arr
     ]
     
-    return create_sample(data_arr, sample_id, description, tags, case_types, db, overwrite=overwrite, **kwargs)
+    return create_sample(data_arr, sample_id, description, db=db, overwrite=overwrite, **kwargs)
+
+def gen_scales_annotation_id(anno_id, scales_project_id):
+    return f"{anno_id}_{scales_project_id}"
+
+def export_project_annotations(project_id, headers=headers, db=db, project_group=None, all_task_data=True, task_data_keys=[], **proj_kwargs):
+    '''
+    Export all annotations to Mongo for a given project
+    '''
+    
+    scales_project_id = gen_scales_project_id(project_id)
+    
+    annos = get_project_annotations(project_id, headers=headers)
+    transformed = transform_annotations(annos, project_id, project_group, all_task_data=True, task_data_keys=[], **proj_kwargs)
+    
+    for anno in transformed:
+        anno['scales_annotation_id'] = gen_scales_annotation_id(anno['annotation_id'], scales_project_id)
+    
+    jobs = [
+        pymongo.UpdateOne(
+            filter = {'scales_annotation_id': anno['scales_annotation_id']},
+            update = {'$set': anno, '$currentDate':{'_updated':{'$type':'date'}}},
+            upsert = True
+        )
+        for anno in transformed
+    ]
+    
+    try:
+        bulk_res = db['completed_annotations'].bulk_write(jobs, ordered=False)
+        return bulk_res
+    except pymongo.errors.BulkWriteError as bwe:
+        print(bwe.details)
         
+        
+def pull_annotations(project_ids, db=db):
+    ''' 
+    Pull clean annotations from Mongo 
+    
+    Inputs:
+        - project_ids (list): a list of labelstudio project ids e.g [9,12]
+    Output:
+        (list) list of results from the annotations.completed_annotations collection
+    '''
+    res = db['completed_annotations'].find( {'project_id':{'$in':project_ids}} )
+    return list(res)
