@@ -17,6 +17,7 @@ print('load_env_success:', load_env_success)
 
 # Replace with whatever needed to get the connector in 
 #sys.path.append( str(Path.cwd().parents[1]))
+sys.path.append(str(Path(__file__).parent.resolve()))
 from connector import SCALESMongo
 
 # Mongo connection
@@ -31,185 +32,6 @@ base_url = f"http://{host}:{port}"
 api_url = base_url + "/api"
 proj_url = f"{api_url}/projects"
 headers = {'Authorization': f"Token {os.environ.get('LABEL_STUDIO_TOKEN')}" }
-
-# Keys to copy when duplicating a project (subset of what's returned by the API because only some can be used in initialisation)
-COPY_KEYS = [ 
-    'description',
-    'label_config',
-    'expert_instruction',
-    'show_instruction',
-    'show_skip_button',
-    'enable_empty_annotation',
-    'show_annotation_history',
-    'organization',
-    'color',
-    'maximum_annotations',
-    'is_published',
-    'model_version',
-    'is_draft',
-    'created_by',
-    'min_annotations_to_start_training',
-    'show_collab_predictions',
-    'sampling',
-    'show_ground_truth_first',
-    'show_overlap_first',
-    'overlap_cohort_percentage',
-    'task_data_login',
-    'task_data_password',
-    #  'control_weights', # Causing trouble
-    'evaluate_predictions_automatically'
-    ]
-
-
-###
-# Getters
-###
-
-def get_all_projects(headers=headers, verbose=False):
-    brief_keys = ('id', 'title', 'description', 'group', 'task_number')
-    res = requests.get(f"{proj_url}/all", headers=headers)
-    all_projects = res.json()
-    if verbose:
-        return all_projects
-    else:
-        return [{k:v for k,v in proj.items() if k in brief_keys} for proj in all_projects]
-
-def get_all_tasks_by_project(proj_id, headers=headers):
-    ''' Get all the tasks for a project
-    
-    Inputs:
-        - proj_id (int or str): the internal label-studio project id
-        - headers (dict): headers to use in the request (expects 'Authorization' key and value to authenticate)
-    Outputs:
-        (list) list with a dict for each task
-    '''
-    url_project_tasks = f"{proj_url}/{proj_id}/tasks"
-    params = {'page_size':-1}
-    res = requests.get(url_project_tasks, headers=headers, params=params)
-    if res.ok:
-        return res.json()
-    else:
-        raise ValueError(repr_error(res))
-        
-        
-### 
-# Import side
-###
-
-def create_project(title, label_config=None, headers=headers, prevent_title_duplication=True, **data_kwargs):
-    '''
-    Create a label-studio project. 
-    Many many options... see https://labelstud.io/api#operation/api_projects_create
-    Inputs:
-        - title (str): project title
-        - label_config (str): label config in XML format
-        - headers (dict): headers to send with request
-        - prevent_name_duplicate (bool): if True, prevents a project with the same name from being created
-        - data_kwargs (dict): additional arguments to pass in request data, see labelstudio API for full list
-        
-    Output:
-        (dict) the api response (includes full project settings, notably including the new project id
-    '''
-    
-    if prevent_title_duplication:
-        all_projects = get_all_projects(headers=headers, verbose=False)
-        print(all_projects)
-        if any(proj['title']==title for proj in all_projects):
-            raise ValueError(f"Title Duplication: Project with title '{title}' already exists, (set `prevent_title_duplication` to False to override)")
-        
-    
-    data = {'title': title, 'label_config':label_config, **data_kwargs}
-    
-    resp = requests.post(proj_url, data=data, headers=headers )
-    if not resp.ok:
-        raise ValueError( repr_error(resp) )
-    else:
-        return resp.json()
-    
-def duplicate_project(proj_id, new_title, headers=headers, prevent_title_duplication=True, settings_only=True):
-    '''
-    Duplicate a label studio project
-    
-    Inputs:
-        - proj_id (int): id of the project you want to copy
-        - new_title (str): title of the new project
-        - headers (dict): headers to use in the queries
-        - prevent_title_duplication (bool):
-        - settings_only (bool) : if True only copies settings, otherwise copies the tasks over also
-    Output:
-        (dict) the return of the /projects/ api when new project is created. Notably it includes the id of the new project
-    '''
-    
-    # Step 1: Get data on the project to be duplicated
-    url = f"{api_url}/projects/{proj_id}/"
-    resp1 = requests.get(url, headers=headers)
-    print(headers)
-    print(resp1)
-    print(resp1.content)
-    
-    if not resp1.ok:
-        raise ValueError( repr_error(resp1) )
-    
-    new_data = {k:v for k,v in resp1.json().items() if k in COPY_KEYS}
-    
-    # jsonify: to get around some encoding issues
-    new_data = json.loads(json.dumps(new_data))
-    print(new_data)
-    
-    # Step 2: Create new project with the same settings
-    new_project_data = create_project(new_title, headers=headers, 
-                                      prevent_title_duplication=prevent_title_duplication, **new_data)
-        
-    if not settings_only:
-        
-        # Step 3: Get tasks from the initial project
-
-        tasks = get_all_tasks_by_project(proj_id, headers=headers)
-
-        # Step 4: import tasks into new project
-        # Just use the body of the tasks (not the metadata that relates to the original project)
-        body = [t['data'] for t in tasks]
-        tasks = import_tasks(new_project_data['id'], body=body, headers = headers)
-
-    return new_project_data
-    
-    
-def import_tasks(project_id, body, headers=headers):
-    ''' 
-    Import tasks into a specific project
-    
-    Inputs:
-        - project_id (int): the project id
-        - body (list): list of tasks, each a dict, structure depends on the labelling setup (but generally includes 'text' key)
-        - headers (dict): request headers
-    Output:
-        (dict) the response from the import API (lists task_count etc.)
-    '''
-    url = f"{api_url}/projects/{project_id}/import"
-    headers = {'Content-Type': 'application/json', **headers}
-
-    resp = requests.post(url, json=body, headers=headers)
-
-    if resp.ok:
-        return resp.json()
-    else:
-        raise ValueError( repr_error(resp) )
-        
-        
-def import_tasks_from_mongo(sample_id, proj_id, db=db, headers=headers):
-    
-    sample = db.samples.find_one({'sample_id': sample_id})
-    return import_tasks(proj_id, body=sample['sample_arr'], headers=headers)
-
-def list_all_samples(db=db):
-    ''' List all of the data samples in mongo annotations.samples'''
-    return list(db.samples.find({}, {'sample_id':1, 'description':1}))
-
-
-
-###
-# Export Side
-###
 
 def get_project_annotations(proj_id, headers=headers):
     ''' Get all tasks and their annotations for a project, skipping tasks that don't have annotations  '''
@@ -305,8 +127,7 @@ def update_mongo_projects(headers, db=db, version=VERSION):
         return bulk_res
     except pymongo.errors.BulkWriteError as bwe:
         print(bwe.details)
-
-
+        
 def get_project_labelset(project_id, db=db, version=VERSION):
     ''' 
     Get the full set of labels available for tagging on a project
@@ -317,14 +138,13 @@ def get_project_labelset(project_id, db=db, version=VERSION):
     
     # Go fetch from mongo
     scales_id = gen_scales_project_id(project_id, version=version)
-    res = db.completed_annotations.find_one({'scales_id':scales_id}, {'parsed_label_config':1})
+    res = db.projects.find_one({'scales_id':scales_id}, {'parsed_label_config':1})
     
     # Assuming only one subkey, structure varies by config
     subkey = list(res['parsed_label_config'].keys())[0]
     
     return {k:v for k,v in res['parsed_label_config'][subkey].items() if k in ('type', 'labels')}
-    
-    
+
 ###
 # Creating a sample
 ###
