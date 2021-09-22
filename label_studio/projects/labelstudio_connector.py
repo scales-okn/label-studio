@@ -63,6 +63,10 @@ COPY_KEYS = [
     ]
 
 
+def repr_error(res):
+    ''' Represent the LabelStudio API error as an informative string, based on the request response'''
+    return f"{res.status_code}: {res.json().get('detail')}"
+
 ###
 # Getters
 ###
@@ -145,9 +149,6 @@ def duplicate_project(proj_id, new_title, headers=headers, prevent_title_duplica
     # Step 1: Get data on the project to be duplicated
     url = f"{api_url}/projects/{proj_id}/"
     resp1 = requests.get(url, headers=headers)
-    print(headers)
-    print(resp1)
-    print(resp1.content)
     
     if not resp1.ok:
         raise ValueError( repr_error(resp1) )
@@ -191,7 +192,7 @@ def import_tasks(project_id, body, headers=headers):
     headers = {'Content-Type': 'application/json', **headers}
 
     resp = requests.post(url, json=body, headers=headers)
-
+    print(resp.content)
     if resp.ok:
         return resp.json()
     else:
