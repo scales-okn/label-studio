@@ -20,7 +20,7 @@ from organizations.models import Organization
 from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 
-from .labelstudio_connector import list_all_samples, import_tasks_from_mongo, duplicate_project
+from .labelstudio_connector import list_all_samples, import_tasks_from_mongo, export_project_annotations, duplicate_project
 logger = logging.getLogger(__name__)
 
 
@@ -82,6 +82,11 @@ def project_manage(request):
             project.save()
         except Exception as e:
             print(e)
+
+
+    if 'backup_project' in request.POST:
+        project = Project.objects.get(id=request.POST['backup_project'])
+        export_project_annotations(project.id, project_group=project.group.name)
 
     if 'sync_samples' in request.POST:
         sample_ids = [x['sample_id'] for x in list_all_samples()]
