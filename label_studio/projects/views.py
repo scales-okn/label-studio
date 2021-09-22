@@ -71,17 +71,14 @@ def project_manage(request):
             print(e)
 
     if 'create_project' in request.POST:
-        try:
-            project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
-            sample = ProjectSample.objects.get(id=request.POST['create_project_sample'])
-            project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
-            project = Project.objects.get(id=project['id'])
-            import_tasks_from_mongo(sample.name, project.id)
-            project.group = project_group
-            project.sample = sample
-            project.save()
-        except Exception as e:
-            print(e)
+        project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
+        sample = ProjectSample.objects.get(id=request.POST['create_project_sample'])
+        project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
+        project = Project.objects.get(id=project['id'])
+        import_tasks_from_mongo(sample.name, project.id)
+        project.group = project_group
+        project.sample = sample
+        project.save()
 
 
     if 'backup_project' in request.POST:
