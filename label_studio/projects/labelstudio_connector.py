@@ -11,7 +11,7 @@ VERSION = 'V0'
 
 # For local testing not in docker container (otherwise will get env vars form docker)
 ENV_PATH = Path(__file__).parent.resolve() / '.env'
-load_env_success = load_dotenv(ENV_PATH)
+load_env_success = load_dotenv(ENV_PATH, override=True)
 print(ENV_PATH)
 print('load_env_success:', load_env_success)
 
@@ -28,7 +28,8 @@ db = SM.db
 #Constants
 host = os.environ['LABEL_STUDIO_HOST']
 port = os.environ['LABEL_STUDIO_PORT_EXT']
-base_url = f"http://{host}:{port}"
+base_url = f"http://{host}:{port}" if port else f"http://{host}"
+print(f"{base_url=}")
 api_url = base_url + "/api"
 proj_url = f"{api_url}/projects"
 headers = {'Authorization': f"Token {os.environ.get('LABEL_STUDIO_TOKEN')}" }
