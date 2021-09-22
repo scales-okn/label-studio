@@ -1,6 +1,7 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
 from django.contrib import admin
+from django.apps import apps
 from django.contrib.auth.admin import UserAdmin
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -26,14 +27,12 @@ class UserAdminShort(UserAdmin):
                           ('Important dates', {'fields': ('last_login', 'date_joined')}))
         
 
-admin.site.register(User)
-admin.site.register(UserGroup)
-admin.site.register(Project)
-admin.site.register(ProjectGroup)
-admin.site.register(MLBackend)
-admin.site.register(MLBackendTrainJob)
-admin.site.register(Task)
-admin.site.register(Annotation)
-admin.site.register(Organization)
-# remove unused django groups
-admin.site.unregister(Group)
+
+models = apps.get_models()
+
+for model in models:
+    try:
+        admin.site.register(model)
+    except admin.sites.AlreadyRegistered:
+        pass
+
