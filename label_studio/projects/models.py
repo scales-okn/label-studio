@@ -58,10 +58,6 @@ class ProjectManager(models.Manager):
         )
 
 
-class ProjectSample(models.Model):
-    name = models.CharField(max_length=300)
-
-
 class ProjectGroup(models.Model):
     name = models.CharField(max_length=300)
     template = models.ForeignKey('Project', on_delete=models.CASCADE)
@@ -82,8 +78,8 @@ class Project(ProjectMixin, models.Model):
     is_template = models.BooleanField(default=True)
     users = models.ManyToManyField(get_user_model())
     user_groups = models.ManyToManyField('UserGroup')
-    sample = models.ForeignKey('ProjectSample', on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey('ProjectGroup', on_delete=models.CASCADE, null=True, blank=True)
+    sample = models.CharField(max_length=240, blank=True, null=True)
+    group = models.ForeignKey('ProjectGroup', on_delete=models.RESTRICT, null=True, blank=True)
     objects = ProjectManager()
     __original_label_config = None
     

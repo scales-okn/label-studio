@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from projects.models import Project, ProjectGroup, UserGroup, ProjectSample
+from projects.models import Project, ProjectGroup, UserGroup
 
 from core.utils.common import get_object_with_check_and_log
 from core.label_config import get_sample_task
@@ -72,10 +72,10 @@ def project_manage(request):
 
     if 'create_project' in request.POST:
         project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
-        sample = ProjectSample.objects.get(id=request.POST['create_project_sample'])
+        sample = request.POST['create_project_sample']
         project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
         project = Project.objects.get(id=project['id'])
-        import_tasks_from_mongo(sample.name, project.id)
+        import_tasks_from_mongo(sample, project.id)
         project.group = project_group
         project.sample = sample
         project.save()
@@ -86,7 +86,7 @@ def project_manage(request):
         export_project_annotations(project.id, project_group=project.group.name)
 
     if 'sync_samples' in request.POST:
-        sample_ids = [x['sample_id'] for x in list_all_samples()]
+        samples = [x['sample_id'] for x in list_all_samples()]
         existing_sample_ids = [x['name'] for x in ProjectSample.objects.values('name')]
         for sample_id in [x for x in sample_ids if x not in existing_sample_ids]:
             sample = ProjectSample(name=sample_id)
@@ -135,7 +135,7 @@ def project_manage(request):
         'user_groups': user_groups,
         'projects': projects,
         'project_groups': ProjectGroup.objects.all(),
-        'samples': ProjectSample.objects.all(),
+        'samples': [x['sample_id'] for x in list_all_samples()],
         'grouped_projects': grouped_projects,
     })
 

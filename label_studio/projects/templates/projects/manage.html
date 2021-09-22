@@ -36,10 +36,9 @@
 					<select name="create_project_sample" class='form-select form-control'>
 						<option>Select data sample</option>
 						{% for sample in samples %}
-							<option value="{{sample.id}}">{{sample.name}}</option>
+							<option value="{{sample}}">{{sample}}</option>
 						{% endfor %}
 					</select>
-					<button class="btn btn-outline-dark" name='sync_samples' type="submit"><i class="h5 bi bi-arrow-repeat"></i></button>
 					<button class="btn btn-outline-dark" name='create_project' type="submit"><i class="bi bi-plus-lg"></i></button>
 				</div>
 			</form>
