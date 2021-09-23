@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+<a class='btn btn-sm btn-outline-dark float-end me-5' href="/projects">
+	Back to Label Studio
+</a>
+<div class='col-10 mt-5 mx-auto' style='max-width: 1000px; min-height: 1500px;'>
+	<ul class="nav nav-tabs">
+	  <li class="nav-item">
+	    <a class="nav-link {% if page == 'manage-projects' %}active{% endif %}" href="{% url 'projects:project-manage' %}">Projects</a>
+	  </li>
+	  <li class="nav-item">
+	    <a class="nav-link {% if page == 'manage-templates' %}active{% endif %}" href="{% url 'projects:project-manage' %}">Templates</a>
+	  </li>
+	  <li class="nav-item">
+	    <a class="nav-link {% if page == 'manage-samples' %}active{% endif %}" href="{% url 'projects:project-manage-samples' %}">Data Samples</a>
+	  </li>
+	  <li class="nav-item">
+	    <a class="nav-link {% if page == 'manage-users' %}active{% endif %}" href="{% url 'projects:project-manage-users' %}" tabindex="-1" aria-disabled="true">Users / Groups</a>
+	  </li>
+	</ul>
+	<div class='row'>
+		{% block content %}
+		{% endblock %}
+	</div>
+</div>
+

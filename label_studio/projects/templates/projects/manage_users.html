@@ -1,0 +1,84 @@
+{% extends 'projects/manage_base.html' %}
+{% block content %}
+<div class='col-8 pe-5'>
+	<form class='mt-4' method='post'>
+		<label class='h4'>Staff</label>
+		<div class='ms-3'>
+			{% for user in users %}
+				{% if user.is_staff %}
+					<p class='mb-0'>
+						{% if not user.is_superuser %}
+							<button class='btn' name='remove_staff' value="{{user.id}}" type='submit'>
+								<i class="bi bi-x"></i>
+							</button>
+						{% else %}
+							<button class='btn' >
+								<i class="bi bi-lock"></i>
+							</button>
+						{% endif %}
+						<span>
+							{{ user }}
+						</span>
+					</p>
+				{% endif %}
+			{% endfor %}
+		</div>
+	</form>
+	<hr>
+
+	<form class='mt-4' method='post'>
+		<label class='h4'>Groups</label>
+		<div class='ms-3'>
+			{% for user_group in user_groups %}
+				<p class='h6 mt-2'>{{user_group.name}}</p>
+				{% for user in user_group.users %}
+					<p class='mb-0'>
+						<button class='btn' name='remove_user_from_group' value="{{user.id}}-{{user_group.id}}" type='submit'>
+							<i class="bi bi-x"></i>
+						</button>
+						<span>
+							{{ user }}
+						</span>
+					</p>
+				{% endfor %}
+			{% endfor %}
+		</div>
+	</form>
+</div>
+
+<div class='position-fixed' style='right:16%; max-width: 25%;'>
+	<form class='mt-4' method='post'>
+		{% csrf_token %}
+		<label class='h6'>Add Staff User</label>
+		<div class="input-group input-group-sm mb-3">
+			<select name="add_staff_id" class='form-select form-control'>
+				{% for user in users %}
+					{% if not user.is_staff %}
+						<option value="{{user.id}}">{{user}}</option>
+					{% endif %}
+				{% endfor %}
+			</select>
+			<button class="btn btn-outline-dark" name='add_staff' type="submit"><i class="bi bi-plus-lg"></i></button>
+		</div>
+		<label class='h6'>Create User Group</label>
+		<div class="input-group input-group-sm mb-3">
+			<input type="text" name='add_user_group_name' class="form-control" placeholder="User Group Name">
+			<button class="btn btn-outline-dark" name='add_user_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+		</div>
+		<label class='h6'>Add User to Group</label>
+		<div class="input-group input-group-sm mb-5">
+			<select name="add_user_to_group_user" class='form-select form-control' placeholder='User'>
+				{% for user in users %}
+					<option value="{{user.id}}">{{user}}</option>
+				{% endfor %}
+			</select>
+			<select name="add_user_to_group_group" class='form-select form-control' placeholder='Group'>
+				{% for user_group in user_groups %}
+					<option value="{{user_group.id}}">{{user_group.name}}</option>
+				{% endfor %}
+			</select>
+			<button class="btn btn-outline-dark" name='add_user_to_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+		</div>
+	</form>
+</div>
+{% endblock %}

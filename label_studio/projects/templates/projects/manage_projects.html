@@ -1,0 +1,86 @@
+{% extends 'projects/manage_base.html' %}
+{% block content %}
+<div class='col-8 pe-5'>
+	<form method='post'>
+		{% csrf_token %}
+		{% for group, group_projects in grouped_projects.items %}
+			<p class='h4 mt-4'>{{group}} <span class='fs-6'>({{group.id}})</span></p>
+			{% for project in group_projects %}
+				<p class='ms-3 mb-0'>
+					<button class='btn btn-sm pt-0 px-0' name='backup_project' value="{{project.id}}" type='submit'>
+						<i class="bi bi-save2"></i>
+					</button>
+					<a class='h6 ms-2 mb-0' style='color:black; text-decoration: none;' href="/projects/{{project.id}}">
+						{{ project.title }}
+					</a>
+					{% for user_group in project.user_groups.all %}
+						<p class='ms-5 mb-0' style='font-size:14px;'>
+							<button class='btn p-0' name='remove_from_project' value="group-{{user_group.id}}-{{project.id}}" type='submit'>
+								<i class="bi bi-x"></i>
+							</button>
+							Group: {{ user_group.name }}
+						</p>
+					{% endfor %}
+					{% for user in project.users.all %}
+						<p class='ms-5 mb-0' style='font-size:14px;'>
+							<button class='btn p-0' name='remove_from_project' value="user-{{user.id}}-{{project.id}}" type='submit'>
+								<i class="bi bi-x"></i>
+							</button>
+							User: {{ user.email }}
+						</p>
+					{% endfor %}
+					<select name="add_to_project" class='ps-4 ms-5 form-select form-select-sm' style='line-height: 14px;height: 24px;font-size:12px;border: 0; width:170px' onchange="this.form.submit()">
+						<option>Add group or user</option>
+						<optgroup label="Groups">
+						{% for user_group in user_groups %}
+							<option value="group-{{user_group.id}}-{{project.id}}">{{user_group.name}}</option>
+						{% endfor %}
+						<optgroup label="Users">
+						{% for user in users %}
+							<option value="user-{{user.id}}-{{project.id}}">{{user.email}}</option>
+						{% endfor %}
+					</select>
+				</p>
+			{% endfor %}
+			<hr>
+		{% endfor %}
+	</form>
+</div>
+
+<div class='position-fixed' style='right:16%; max-width: 25%;'>
+	<form class='mt-4' method='post'>
+		{% csrf_token %}
+		<label class='h6'>Create Project Group</label>
+		<div class="input-group input-group-sm mb-3">
+			<input type="text" name='create_project_group_name' class="form-control" placeholder="name">
+			<select name="create_project_group_template" class='form-select form-control'>
+				<option>template</option>
+				{% for project in projects %}
+					{% if project.is_template %}
+						<option value="{{project.id}}">{{project.title}}</option>
+					{% endif %}
+				{% endfor %}
+			</select>
+			<button class="btn btn-outline-dark" name='create_project_group' type="submit"><i class="bi bi-plus-lg"></i></button>
+		</div>
+		<label class='h6'>Create Project</label>
+		<div class="input-group input-group-sm mb-3">
+			<input type="text" name='create_project_name' class="form-control" placeholder="name">
+			<select name="create_project_project_group" class='form-select form-control'>
+				<option>group</option>
+				{% for project_group in project_groups %}
+					<option value="{{project_group.id}}">{{project_group.name}} ({{project_group.template.title}})</option>
+				{% endfor %}
+			</select>
+			<select name="create_project_sample" class='form-select form-control'>
+				<option>sample</option>
+				{% for sample in samples %}
+					<option value="{{sample}}">{{sample}}</option>
+				{% endfor %}
+			</select>
+			<button class="btn btn-outline-dark" name='create_project' type="submit"><i class="bi bi-plus-lg"></i></button>
+		</div>
+	</form>
+</div>
+
+{% endblock %}

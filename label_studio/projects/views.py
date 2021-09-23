@@ -31,32 +31,6 @@ def project_manage(request):
     print(request.POST)
     #ProjectSample.objects.all().delete()
 
-    if 'remove_staff' in request.POST:
-        user = get_user_model().objects.get(id=request.POST['remove_staff'])
-        user.is_staff = False
-        user.save()
-
-    if 'add_staff' in request.POST:
-        user = get_user_model().objects.get(id=request.POST['add_staff_id'])
-        user.is_staff = True
-        user.save()
-
-    if 'add_user_group' in request.POST:
-        user_group = UserGroup(name=request.POST['add_user_group_name'])
-        user_group.save()
-
-    if 'add_user_to_group' in request.POST:
-        user_group = UserGroup.objects.get(id=request.POST['add_user_to_group_group'])
-        user = get_user_model().objects.get(id=request.POST['add_user_to_group_user'])
-        user_group.users.add(user)
-        user_group.save()
-
-    if 'remove_user_from_group' in request.POST:
-        user_id, user_group_id = request.POST['remove_user_from_group'].split('-')
-        user_group = UserGroup.objects.get(id=user_group_id)
-        user = get_user_model().objects.get(id=user_id)
-        user_group.users.remove(user)
-        user_group.save()
 
     if 'create_project_group' in request.POST:
         try:
@@ -67,18 +41,21 @@ def project_manage(request):
                     template=template,
                 )
                 project_group.save()
-        except Exception as e:
+        except ValueError as e:
             print(e)
 
     if 'create_project' in request.POST:
-        project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
-        sample = request.POST['create_project_sample']
-        project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
-        project = Project.objects.get(id=project['id'])
-        import_tasks_from_mongo(sample, project.id)
-        project.group = project_group
-        project.sample = sample
-        project.save()
+        try:
+            project_group = ProjectGroup.objects.get(id=request.POST['create_project_project_group'])
+            sample = request.POST['create_project_sample']
+            project = duplicate_project(project_group.template.id, request.POST['create_project_name'])
+            project = Project.objects.get(id=project['id'])
+            import_tasks_from_mongo(sample, project.id)
+            project.group = project_group
+            project.sample = sample
+            project.save()
+        except ValueError as e:
+            print(e)
 
 
     if 'backup_project' in request.POST:
@@ -130,14 +107,83 @@ def project_manage(request):
     users = get_user_model().objects.all()
     user_groups = [model_to_dict(x) for x in UserGroup.objects.all()]
 
-    return render(request, 'projects/manage.html', {
-        'users': users,
-        'user_groups': user_groups,
+    return render(request, 'projects/manage_projects.html', {
+        'page': 'manage-projects',
         'projects': projects,
         'project_groups': ProjectGroup.objects.all(),
         'samples': [x['sample_id'] for x in list_all_samples()],
         'grouped_projects': grouped_projects,
+        'users': users,
+        'user_groups': user_groups,
     })
+
+
+def project_manage_samples(request):
+    if not request.user.is_staff:
+        return redirect('projects:project-index')
+
+    projects = Project.objects.all()
+
+    grouped_projects = {}
+    for project in projects:
+        if not project.is_template:
+            grouped_projects[project.group] = grouped_projects.get(project.group, []) + [project]
+
+    users = get_user_model().objects.all()
+    user_groups = [model_to_dict(x) for x in UserGroup.objects.all()]
+
+    print(list_all_samples())
+
+    return render(request, 'projects/manage_projects.html', {
+        'page': 'manage-samples',
+        'projects': projects,
+        'project_groups': ProjectGroup.objects.all(),
+        'samples': [x['sample_id'] for x in list_all_samples()],
+        'grouped_projects': grouped_projects,
+        'users': users,
+        'user_groups': user_groups,
+    })
+
+def project_manage_users(request):
+    if not request.user.is_staff:
+        return redirect('projects:project-index')
+
+    if 'remove_staff' in request.POST:
+        user = get_user_model().objects.get(id=request.POST['remove_staff'])
+        user.is_staff = False
+        user.save()
+
+    if 'add_staff' in request.POST:
+        user = get_user_model().objects.get(id=request.POST['add_staff_id'])
+        user.is_staff = True
+        user.save()
+
+    if 'add_user_group' in request.POST:
+        user_group = UserGroup(name=request.POST['add_user_group_name'])
+        user_group.save()
+
+    if 'add_user_to_group' in request.POST:
+        user_group = UserGroup.objects.get(id=request.POST['add_user_to_group_group'])
+        user = get_user_model().objects.get(id=request.POST['add_user_to_group_user'])
+        user_group.users.add(user)
+        user_group.save()
+
+    if 'remove_user_from_group' in request.POST:
+        user_id, user_group_id = request.POST['remove_user_from_group'].split('-')
+        user_group = UserGroup.objects.get(id=user_group_id)
+        user = get_user_model().objects.get(id=user_id)
+        user_group.users.remove(user)
+        user_group.save()
+
+    users = get_user_model().objects.all()
+    user_groups = [model_to_dict(x) for x in UserGroup.objects.all()]
+
+    return render(request, 'projects/manage_users.html', {
+        'page': 'manage-users',
+        'users': users,
+        'user_groups': user_groups,
+    })
+
 
 @login_required
 def project_list(request):
