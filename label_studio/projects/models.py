@@ -2,6 +2,7 @@
 """
 import json
 import logging
+import lxml.etree
 
 from django.db.models import Q, Avg, Count, Sum, Value, BooleanField, Case, When
 from django.conf import settings
@@ -163,6 +164,26 @@ class Project(ProjectMixin, models.Model):
         if self.label_config is not None:
             if self.data_types != extract_data_types(self.label_config):
                 self.data_types = extract_data_types(self.label_config)
+
+    @property
+    def get_labels(self):
+        root = lxml.etree.fromstring(self.label_config)
+        roots = [root] + list(root.getchildren())
+        for root in roots:
+            for child in root.getchildren():
+                if child.tag in ['Labels', 'Choices']:
+                    return [x.get('value') for x in child]
+        return []
+
+    @property
+    def get_task(self):
+        root = lxml.etree.fromstring(self.label_config)
+        if any(x.tag == 'Labels' for x in root.getchildren()):
+            return 'NER'
+        elif any(x.tag == 'Choices' for x in root[1].getchildren()):
+            return 'Classification'
+        else:
+            return 'Unknown'
 
     @property
     def num_tasks(self):

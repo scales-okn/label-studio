@@ -11,6 +11,7 @@ app_name = 'projects'
 # reverse for projects:name
 _urlpatterns = [
     path('manage', views.project_manage, name='project-manage'),
+    path('manage-templates', views.project_manage_templates, name='project-manage-templates'),
     path('manage-samples', views.project_manage_samples, name='project-manage-samples'),
     path('manage-users', views.project_manage_users, name='project-manage-users'),
 

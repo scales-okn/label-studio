@@ -118,31 +118,36 @@ def project_manage(request):
     })
 
 
+def project_manage_templates(request):
+    if not request.user.is_staff:
+        return redirect('projects:project-index')
+
+    templates = Project.objects.filter(is_template=True)
+    if request.POST:
+        if 'filter_templates' in request.POST:
+            query = request.POST['query'].lower()
+            templates = templates.filter(title__icontains=query)
+
+    return render(request, 'projects/manage_templates.html', {
+        'page': 'manage-templates',
+        'templates': templates,
+    })
+
 def project_manage_samples(request):
     if not request.user.is_staff:
         return redirect('projects:project-index')
 
-    projects = Project.objects.all()
+    samples = list_all_samples()
+    if request.POST:
+        if 'filter_samples' in request.POST:
+            query = request.POST['query'].lower()
+            samples = [x for x in samples if any(query in y.lower() for y in [x['sample_id'], x['description']])]
 
-    grouped_projects = {}
-    for project in projects:
-        if not project.is_template:
-            grouped_projects[project.group] = grouped_projects.get(project.group, []) + [project]
-
-    users = get_user_model().objects.all()
-    user_groups = [model_to_dict(x) for x in UserGroup.objects.all()]
-
-    print(list_all_samples())
-
-    return render(request, 'projects/manage_projects.html', {
+    return render(request, 'projects/manage_samples.html', {
         'page': 'manage-samples',
-        'projects': projects,
-        'project_groups': ProjectGroup.objects.all(),
-        'samples': [x['sample_id'] for x in list_all_samples()],
-        'grouped_projects': grouped_projects,
-        'users': users,
-        'user_groups': user_groups,
+        'samples': samples,
     })
+
 
 def project_manage_users(request):
     if not request.user.is_staff:
