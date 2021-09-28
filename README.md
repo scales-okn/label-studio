@@ -59,6 +59,12 @@ docker-compose exec app bash
 ```
 
 
+### Viewing live log output
+```
+docker-compose logs -f app
+```
+
+
 ## Updating
 To pull the latest version you can just do a `git pull` from inside of that directory (the ssh key of the droplet has been to the GitHub deploy keys for this repo) so it will authenticate itself. Just pulling the repo will __not__ update the live server (as it needs to rebuild the django app). To do this you will need to:
 ```bash
