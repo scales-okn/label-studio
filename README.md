@@ -72,3 +72,15 @@ docker-compose down
 docker-compose build
 docker-compose up -d #detaching from the session is vital
 ```
+# Misc
+## Adding 'Notes' section to labelling config
+To add a notes section you can add a TextArea to the label config (basically copied from the 'Text Summarization' template). The two additional lines are
+
+```xml
+    <Header value="Notes"/>
+    <TextArea name="notes" toName="text" showSubmitButton="true" maxSubmissions="1" editable="true"/>
+```
+- The `maxSubmisssions="1"` makes sure only one note can be added per task
+- The `editable="true"` allows tagger to edit the note
+- The `name="notes"` is the name you want to be the key for this data in the export
+- The `toName="text"` not 100% on this, think it needs to be the same as the other component of the tagging (choice/ner etc.)
