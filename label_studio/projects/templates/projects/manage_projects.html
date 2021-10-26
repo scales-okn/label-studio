@@ -64,8 +64,10 @@
 			<button class="btn btn-outline-dark" name='create_project_group' type="submit"><i class="bi bi-plus-lg"></i></button>
 		</div>
 		<label class='h6'>Create Project</label>
-		<div class="input-group input-group-sm mb-3">
+		<div class="input-group input-group-sm mb-2">
 			<input type="text" name='create_project_name' class="form-control" placeholder="name">
+		</div>
+		<div class="input-group input-group-sm mb-3">
 			<select name="create_project_project_group" class='form-select form-control'>
 				<option>group</option>
 				{% for project_group in project_groups %}

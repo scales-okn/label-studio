@@ -167,23 +167,25 @@ class Project(ProjectMixin, models.Model):
 
     @property
     def get_labels(self):
-        root = lxml.etree.fromstring(self.label_config)
-        roots = [root] + list(root.getchildren())
-        for root in roots:
-            for child in root.getchildren():
-                if child.tag in ['Labels', 'Choices']:
-                    return [x.get('value') for x in child]
+        config = self.get_parsed_config()
+        keys = list(config.keys())
+        if len(keys) > 0:
+            if 'labels' in config[keys[0]]:
+                return config[keys[0]]['labels']
         return []
 
     @property
     def get_task(self):
-        root = lxml.etree.fromstring(self.label_config)
-        if any(x.tag == 'Labels' for x in root.getchildren()):
-            return 'NER'
-        elif any(x.tag == 'Choices' for x in root[1].getchildren()):
-            return 'Classification'
-        else:
-            return 'Unknown'
+        config = self.get_parsed_config()
+        keys = list(config.keys())
+        if len(keys) > 0:
+            if 'type' in config[keys[0]]:
+                task = config[keys[0]]['type']
+                if task == 'Choices':
+                    return 'Classification'
+                elif task == 'Labels':
+                    return 'NER'
+        return 'Unknown'
 
     @property
     def num_tasks(self):
