@@ -1,6 +1,22 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
+import os
+from dotenv import load_dotenv
 from core.settings.base import *
+
+# Load the .env in this directory
+ENV_PATH = Path(__file__).parent.resolve() / '.env'
+load_env_success = load_dotenv(ENV_PATH, override=True)
+print(ENV_PATH)
+print('core.settings.label_studio.py load_env_success:', load_env_success)
+
+# Load defaults from the .env in this directory
+DEFAULT_SCALES_LSTUDIO_API_URL = os.getenv('DEFAULT_SCALES_LSTUDIO_API_URL')
+DEFAULT_SCALES_LSTUDIO_CONNECTOR_API_URL = os.getenv('DEFAULT_SCALES_LSTUDIO_CONNECTOR_API_URL')
+
+# Grab the following env variables, if specifid in docker-compose will come from there, else defaults
+SCALES_LSTUDIO_API_URL = os.getenv('SCALES_LSTUDIO_API_URL', DEFAULT_SCALES_LSTUDIO_API_URL)
+SCALES_LSTUDIO_CONNECTOR_API_URL = os.getenv('SCALES_LSTUDIO_CONNECTOR_API_URL', DEFAULT_SCALES_LSTUDIO_API_URL)
 
 DJANGO_DB = get_env('DJANGO_DB', DJANGO_DB_SQLITE)
 DATABASES = {'default': DATABASES_ALL[DJANGO_DB]}
