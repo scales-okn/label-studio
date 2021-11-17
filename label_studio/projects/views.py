@@ -63,7 +63,14 @@ def project_manage(request):
         export_project_annotations(project.id, project_group=project.group.name)
 
     if 'sync_samples' in request.POST:
-        samples = [x['sample_id'] for x in list_all_samples()]
+
+        resp = request.get(
+            settings.SCALES_LSTUDIO_CONNECTOR_API_URL + '/list_all_samples',
+            headers=request.user.get_connector_headers()
+        )
+        data = resp.json()['data']
+
+        samples = [x['sample_id'] for x in data]
         existing_sample_ids = [x['name'] for x in ProjectSample.objects.values('name')]
         for sample_id in [x for x in sample_ids if x not in existing_sample_ids]:
             sample = ProjectSample(name=sample_id)
