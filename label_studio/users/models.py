@@ -157,7 +157,7 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
             token.delete()
         return Token.objects.create(user=self)
 
-    def get_connector_token(self):
+    def get_connector_headers(self):
         ''' Generate the header object to send in requests to connector'''
         headers = {
             'Authorization': 'Token ' + Token.objects.filter(user=self),

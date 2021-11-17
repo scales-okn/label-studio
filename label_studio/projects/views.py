@@ -1,6 +1,7 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
 import json
+import requests
 import logging
 import lxml.etree
 from django.http import HttpResponse
@@ -64,7 +65,7 @@ def project_manage(request):
 
     if 'sync_samples' in request.POST:
 
-        resp = request.get(
+        resp = requests.get(
             settings.SCALES_LSTUDIO_CONNECTOR_API_URL + '/list_all_samples',
             headers=request.user.get_connector_headers()
         )
