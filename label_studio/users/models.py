@@ -139,7 +139,7 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
             name = self.email
 
         return name
-        
+
     def get_full_name(self):
         """
         Return the first_name and the last_name for a given user with a space in between.
@@ -156,7 +156,16 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
         if token.exists():
             token.delete()
         return Token.objects.create(user=self)
-    
+
+    def get_connector_token(self):
+        ''' Generate the header object to send in requests to connector'''
+        headers = {
+            'Authorization': 'Token ' + Token.objects.filter(user=self),
+            'Labelstudio-Api-Url': settings.SCALES_LSTUDIO_API_URL
+        }
+
+        return headers
+
     def get_initials(self):
         initials = '?'
         if not self.first_name and not self.last_name:
