@@ -13,7 +13,7 @@ VERSION = 'V0'
 ENV_PATH = Path(__file__).parent.resolve() / '.env'
 load_env_success = load_dotenv(ENV_PATH, override=True)
 print(ENV_PATH)
-print('load_env_success:', load_env_success)
+print('load_env_success?:', load_env_success)
 
 # Replace with whatever needed to get the connector in 
 #sys.path.append( str(Path.cwd().parents[1]))
@@ -206,6 +206,8 @@ def import_tasks_from_mongo(sample_id, proj_id, db=db, headers=headers):
 
 def list_all_samples(db=db):
     ''' List all of the data samples in mongo annotations.samples'''
+    print(db)
+    print(db.user)
     return list(db.samples.find({}, {'sample_id':1, 'description':1}))
 
 
@@ -226,7 +228,12 @@ def get_project_annotations(proj_id, headers=headers):
 def remap_annotation(anno):
     ''' Remap annotations'''
     
-    kind = anno['result'][0]['type']
+    labels = []
+    
+    if not len(anno['result']):
+        return labels
+    
+    kind = anno['result'][0]['type'] 
     
     if kind=='choices':
         labels = anno['result'][0]['value']['choices']
@@ -237,6 +244,12 @@ def remap_annotation(anno):
     # Taxonomy might be useful for very specific hierarchy stuff, but not for now
     elif kind=='taxonomy':
         labels = [",".join(x) for x in anno['result']["taxonomy"]]
+        
+    #TODO: deal with textarea notes
+    elif kind=='textarea':
+        pass
+        
+
     
     return labels
         
