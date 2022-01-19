@@ -1,6 +1,7 @@
 
 # Original Readme
 This is a SCALES fork of label-studio that adds some additional functionality. For the original readme see [here](https://github.com/heartexlabs/label-studio#readme).
+
 Note: this repo is **public** (forks stay public!)
 
 # Docker app
@@ -71,7 +72,9 @@ docker-compose logs -f app
 
 
 ## Updating
-To pull the latest version you can just do a `git pull` from inside of that directory (the ssh key of the droplet has been added to the GitHub deploy keys for this repo) so it will authenticate itself. Just pulling the repo will __not__ update the live server (as it needs to rebuild the django app). To do this you will need to do the following (after you have done a `git pull` from inside the repo inside the container):
+To pull the latest version you can just do a `git pull` from inside of that directory. The droplet has its own ssh credentials at `~/.ssh/id_rsa` and those have been added to the deploy keys for this project.
+
+Just pulling the repo will __not__ update the live server (as it needs to rebuild the django app). To do this you will need to do the following (after you have done a `git pull` from inside the repo inside the container):
 ```bash
 docker-compose down
 docker-compose build
