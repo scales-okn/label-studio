@@ -30,10 +30,10 @@ services:
     image: postgres:11.5
     hostname: db
     restart: always
-    ports:
-      - "${POSTGRES_PORT_EXT:-8080}:5432"
+#     ports:
+#       - "${POSTGRES_PORT_EXT:-8080}:5432"
     environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
