@@ -99,7 +99,7 @@ def project_manage(request):
         projects = Project.objects.all()
     else:
         projects = Project.objects.filter(hidden=False)
-    projects = projects.order_by('name')
+    projects = projects.order_by('title')
 
     grouped_projects = {}
     for project in projects:
