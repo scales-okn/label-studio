@@ -8,9 +8,8 @@ from core.settings.base import *
 # Load the .env in this directory
 ENV_PATH = Path(__file__).parent.resolve() / '.env'
 load_env_success = load_dotenv(ENV_PATH, override=True)
-print(ENV_PATH)
 print('core.settings.label_studio.py load_env_success:', load_env_success)
-
+print(BASE_DATA_DIR)
 # Load defaults from the .env in this directory
 DEFAULT_SCALES_LSTUDIO_API_URL = os.getenv('DEFAULT_SCALES_LSTUDIO_API_URL')
 DEFAULT_SCALES_LSTUDIO_CONNECTOR_API_URL = os.getenv('DEFAULT_SCALES_LSTUDIO_CONNECTOR_API_URL')
@@ -21,6 +20,7 @@ SCALES_LSTUDIO_CONNECTOR_API_URL = os.getenv('SCALES_LSTUDIO_CONNECTOR_API_URL',
 
 DJANGO_DB = get_env('DJANGO_DB', DJANGO_DB_SQLITE)
 DATABASES = {'default': DATABASES_ALL[DJANGO_DB]}
+print(DATABASES)
 
 MIDDLEWARE.append('organizations.middleware.DummyGetSessionMiddleware')
 MIDDLEWARE.append('core.middleware.UpdateLastActivityMiddleware')

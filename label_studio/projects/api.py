@@ -156,7 +156,8 @@ class ProjectListDisplayAPI(ProjectListAPI):
         user_groups = UserGroup.objects.filter(users__in=[self.request.user])
         projects =  Project.objects.with_counts().filter(
             organization=self.request.user.active_organization,
-            is_template=False
+            is_template=False,
+            hidden=False,
         ).filter(Q(users__in=[self.request.user]) | Q(user_groups__in=user_groups))
         return projects
 

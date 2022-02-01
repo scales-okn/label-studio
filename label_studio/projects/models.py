@@ -76,6 +76,7 @@ ProjectMixin = load_func(settings.PROJECT_MIXIN)
 class Project(ProjectMixin, models.Model):
     """
     """
+    hidden = models.BooleanField(default=False)
     is_template = models.BooleanField(default=True)
     users = models.ManyToManyField(get_user_model())
     user_groups = models.ManyToManyField('UserGroup')

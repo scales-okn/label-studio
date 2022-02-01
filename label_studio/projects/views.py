@@ -31,6 +31,10 @@ def project_manage(request):
     print(request.POST)
     #ProjectSample.objects.all().delete()
 
+    if 'hide_project' in request.POST:
+        project = Project.objects.get(id=request.POST['hide_project'])
+        project.hidden = not project.hidden
+        project.save()
 
     if 'create_project_group' in request.POST:
         try:
@@ -56,11 +60,6 @@ def project_manage(request):
             project.save()
         except ValueError as e:
             print(e)
-
-
-    if 'backup_project' in request.POST:
-        project = Project.objects.get(id=request.POST['backup_project'])
-        export_project_annotations(project.id, project_group=project.group.name)
 
     if 'sync_samples' in request.POST:
         samples = [x['sample_id'] for x in list_all_samples()]
@@ -96,8 +95,10 @@ def project_manage(request):
                     print(e)
 
 
-
-    projects = Project.objects.all()
+    if 'show_hidden_projects' in request.POST:
+        projects = Project.objects.all()
+    else:
+        projects = Project.objects.filter(hidden=False)
 
     grouped_projects = {}
     for project in projects:
