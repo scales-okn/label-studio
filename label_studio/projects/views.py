@@ -112,7 +112,7 @@ def project_manage(request):
     return render(request, 'projects/manage_projects.html', {
         'page': 'manage-projects',
         'projects': projects,
-        'project_groups': ProjectGroup.objects.all(),
+        'project_groups': ProjectGroup.objects.all().order_by('name'),
         'samples': [x['sample_id'] for x in list_all_samples()],
         'grouped_projects': grouped_projects,
         'users': users,
