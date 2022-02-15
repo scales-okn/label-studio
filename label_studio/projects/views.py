@@ -105,6 +105,7 @@ def project_manage(request):
     for project in projects:
         if not project.is_template:
             grouped_projects[project.group] = grouped_projects.get(project.group, []) + [project]
+    grouped_projects = dict(sorted(grouped_projects.items()))
 
     users = get_user_model().objects.all()
     user_groups = [model_to_dict(x) for x in UserGroup.objects.all()]
