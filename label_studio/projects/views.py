@@ -93,6 +93,32 @@ def project_manage(request):
                     project.save()
                 except Exception as e:
                     print(e)
+    
+    if 'remove_from_project_group' in request.POST:
+        remove_type, remove_id, project_group_id = request.POST['remove_from_project_group'].split('-')
+        project_group = ProjectGroup.objects.get(id=project_group_id)
+        if remove_type == 'group':
+            user_group = UserGroup.objects.get(id=remove_id)
+            project_group.user_groups.remove(user_group)
+        elif remove_type == 'user':
+            user = get_user_model().objects.get(id=remove_id)
+            project_group.users.remove(user)
+        project_group.save()
+    else:
+        if 'add_to_project_group' in request.POST:
+            for info in request.POST.getlist('add_to_project_group'):
+                try:
+                    add_type, add_id, project_group_id = info.split('-')
+                    project_group = ProjectGroup.objects.get(id=project_group_id)
+                    if add_type == 'group':
+                        user_group = UserGroup.objects.get(id=add_id)
+                        project_group.user_groups.add(user_group)
+                    elif add_type == 'user':
+                        user = get_user_model().objects.get(id=add_id)
+                        project_group.users.add(user)
+                    project_group.save()
+                except Exception as e:
+                    print(e)
 
 
     if 'show_hidden_projects' in request.POST:

@@ -62,6 +62,8 @@ class ProjectManager(models.Manager):
 class ProjectGroup(models.Model):
     name = models.CharField(max_length=300)
     template = models.ForeignKey('Project', on_delete=models.CASCADE)
+    users = models.ManyToManyField(get_user_model())
+    user_groups = models.ManyToManyField('UserGroup')
 
     def __str__(self):
         return self.name

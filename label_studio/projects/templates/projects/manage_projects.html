@@ -8,6 +8,33 @@
 		</button>
 		{% for group, group_projects in grouped_projects.items %}
 			<p class='h4 mt-4'>{{group}} <span class='fs-6'>({{group.id}})</span></p>
+			{% for user_group in group.user_groups.all %}
+				<p class='ms-5 mb-0' style='font-size:14px;'>
+					<button class='btn p-0' name='remove_from_project_group' value="group-{{user_group.id}}-{{group.id}}" type='submit'>
+						<i class="bi bi-x"></i>
+					</button>
+					Group: {{ user_group.name }}
+				</p>
+			{% endfor %}
+			{% for user in group.users.all %}
+				<p class='ms-5 mb-0' style='font-size:14px;'>
+					<button class='btn p-0' name='remove_from_project_group' value="user-{{user.id}}-{{group.id}}" type='submit'>
+						<i class="bi bi-x"></i>
+					</button>
+					User: {{ user.email }}
+				</p>
+			{% endfor %}
+			<select name="add_to_project_group" class='ps-4 ms-5 form-select form-select-sm' style='line-height: 14px;height: 24px;font-size:12px;border: 0; width:170px' onchange="this.form.submit()">
+				<option>Add group or user</option>
+				<optgroup label="Groups">
+				{% for user_group in user_groups %}
+					<option value="group-{{user_group.id}}-{{group.id}}">{{user_group.name}}</option>
+				{% endfor %}
+				<optgroup label="Users">
+				{% for user in users %}
+					<option value="user-{{user.id}}-{{group.id}}">{{user.email}}</option>
+				{% endfor %}
+			</select>
 			{% for project in group_projects %}
 				<p class='ms-3 mb-0'>
 					<a class='h6 ms-2 mb-0' style='color:black; text-decoration: none;' href="/projects/{{project.id}}">

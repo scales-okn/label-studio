@@ -158,7 +158,10 @@ class ProjectListDisplayAPI(ProjectListAPI):
             organization=self.request.user.active_organization,
             is_template=False,
             hidden=False,
-        ).filter(Q(users__in=[self.request.user]) | Q(user_groups__in=user_groups))
+        ).filter(
+            Q(users__in=[self.request.user]) | Q(user_groups__in=user_groups) | 
+            Q(group__users__in=[self.request.user]) | Q(group__user_groups__in=user_groups)
+        )
         return projects
 
 
