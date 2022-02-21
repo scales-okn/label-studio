@@ -1,9 +1,14 @@
 {% extends 'projects/manage_base.html' %}
 {% block content %}
 <div class='col-10 mx-auto mt-5'>
+	<p class="h4">
+		Annotations Completed
+	</p>
 	{% for username, count in users.items %}
 		{% if count > 0 %}
-			{{username}} completed {{count}} annotations
+			<p class="h5">
+				{{username}} {{count}}
+			</p>
 		{% endif %}
 	{% endfor %}
 </div>
