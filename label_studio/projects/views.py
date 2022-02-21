@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from projects.models import Project, ProjectGroup, UserGroup
+from tasks.models import Annotation
 
 from core.utils.common import get_object_with_check_and_log
 from core.label_config import get_sample_task
@@ -218,6 +219,18 @@ def project_manage_users(request):
         'user_groups': user_groups,
     })
 
+def project_manage_progress(request):
+    if not request.user.is_staff:
+        return redirect('projects:project-index')
+
+    users = {}
+    for user in get_user_model().objects.all():
+        users[user.email] = Annotation.objects.filter(completed_by=user).count()
+    users = dict(sorted(users.items(), key=lambda item: item[1]))
+    return render(request, 'projects/manage_progress.html', {
+        'page': 'manage-progress',
+        'users': users,
+    })
 
 @login_required
 def project_list(request):

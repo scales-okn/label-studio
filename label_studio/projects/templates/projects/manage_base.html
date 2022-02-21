@@ -17,6 +17,9 @@
 	  <li class="nav-item">
 	    <a class="nav-link {% if page == 'manage-users' %}active{% endif %}" href="{% url 'projects:project-manage-users' %}" tabindex="-1" aria-disabled="true">Users / Groups</a>
 	  </li>
+	  <li class="nav-item">
+	    <a class="nav-link {% if page == 'manage-progress' %}active{% endif %}" href="{% url 'projects:project-manage-progress' %}" tabindex="-1" aria-disabled="true">Progress</a>
+	  </li>
 	</ul>
 	<div class='row'>
 		{% block content %}

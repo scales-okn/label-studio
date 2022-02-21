@@ -14,6 +14,7 @@ _urlpatterns = [
     path('manage-templates', views.project_manage_templates, name='project-manage-templates'),
     path('manage-samples', views.project_manage_samples, name='project-manage-samples'),
     path('manage-users', views.project_manage_users, name='project-manage-users'),
+    path('manage-progress', views.project_manage_progress, name='project-manage-progress'),
 
     path('', views.project_list, name='project-index'),
     path('<int:pk>/settings/', views.project_settings, name='project-settings', kwargs={'sub_path': ''}),
