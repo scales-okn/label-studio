@@ -226,7 +226,7 @@ def project_manage_progress(request):
     users = {}
     for user in get_user_model().objects.all():
         users[user.email] = Annotation.objects.filter(completed_by=user).count()
-    users = dict(sorted(users.items(), key=lambda item: item[1]))
+    users = dict(sorted(users.items(), key=lambda item: -item[1]))
     return render(request, 'projects/manage_progress.html', {
         'page': 'manage-progress',
         'users': users,
