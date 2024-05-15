@@ -105,7 +105,7 @@
 			<select name="create_project_project_group" class='form-select form-control'>
 				<option>group</option>
 				{% for project_group in project_groups %}
-					<option value="{{project_group.id}}">{{project_group.name}} ({{project_group.id}})</option>
+					<option value="{{project_group.id}}">{% if project_group %}{{project_group.name}}{% endif %} ({{project_group.id}})</option>
 				{% endfor %}
 			</select>
 			<select name="create_project_sample" class='form-select form-control'>
