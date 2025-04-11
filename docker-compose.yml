@@ -33,9 +33,10 @@ services:
     ports:
       - "${POSTGRES_PORT_EXT:-8080}:5432"
     environment:
+      # for reasons unknown to me, the below password was not set on the original db init; i fixed it in pg_hba, but a debug may be needed for a new deployment
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       # the below line has not been tested on a new deployment! please make sure you're not exposing the database to the open internet!
-      POSTGRES_INITDB_ARGS: --auth=password
+      POSTGRES_INITDB_ARGS: --auth=md5
     volumes:
       - pgdata:/var/lib/postgresql/data
 
