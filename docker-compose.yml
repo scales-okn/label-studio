@@ -34,6 +34,7 @@ services:
       - "${POSTGRES_PORT_EXT:-8080}:5432"
     environment:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      # the below line has not been tested on a new deployment! please make sure you're not exposing the database to the open internet!
       POSTGRES_INITDB_ARGS: --auth=password
     volumes:
       - pgdata:/var/lib/postgresql/data
